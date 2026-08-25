@@ -14,13 +14,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const locationId = parseInt(id, 10);
-    if (isNaN(locationId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid location ID" }, { status: 400 });
     }
 
     const loc = await prisma.gbpLocation.findUnique({
-      where: { id: locationId }
+      where: { id }
     });
 
     if (!loc) {
@@ -39,7 +38,7 @@ export async function GET(
 
     const snapshots = await prisma.gbpPerformanceSnapshot.findMany({
       where: {
-        locationId,
+        locationId: id,
         date: { gte: cutoffDate }
       },
       orderBy: { date: "asc" }

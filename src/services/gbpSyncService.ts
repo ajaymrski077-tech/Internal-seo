@@ -25,7 +25,7 @@ const GBP_METRICS_LIST = [
   "BUSINESS_BOOKINGS"
 ];
 
-export async function syncGbpData(locationId: number, daysBack: number = 30): Promise<void> {
+export async function syncGbpData(locationId: string | number, daysBack: number = 30): Promise<void> {
   const location = await prisma.gbpLocation.findUnique({
     where: { id: locationId },
     include: { connection: true }

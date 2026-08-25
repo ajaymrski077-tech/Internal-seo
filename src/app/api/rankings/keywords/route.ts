@@ -26,10 +26,10 @@ export async function GET(req: NextRequest) {
 
     const where: any = {};
     if (clientIdStr && clientIdStr !== "All") {
-      where.clientId = parseInt(clientIdStr, 10);
+      where.clientId = clientIdStr;
     }
     if (propertyIdStr && propertyIdStr !== "All") {
-      where.propertyId = parseInt(propertyIdStr, 10);
+      where.propertyId = propertyIdStr;
     }
     if (status && status !== "All") {
       where.status = status.toUpperCase();
@@ -53,42 +53,46 @@ export async function GET(req: NextRequest) {
     });
 
     // Filter by positionGroup in memory to make it reliable with snapshot records
-    let filteredKeywords = keywords.map(kw => {
-      const currSnap = kw.snapshots[0];
-      const prevSnap = kw.snapshots[1];
+    let filteredKeywords = keywords.map((kw: any) => {
+      const currSnap = kw.snapshots ? kw.snapshots[0] : null;
+      const prevSnap = kw.snapshots ? kw.snapshots[1] : null;
       
       const currPos = currSnap ? currSnap.position : null;
       const prevPos = prevSnap ? prevSnap.position : null;
-      
-      const positionChange = (prevPos !== null && currPos !== null && prevPos !== undefined && currPos !== undefined)
-        ? parseFloat((prevPos - currPos).toFixed(2))
-        : null;
+
+      let positionChange: number | null = null;
+      if (currPos !== null && prevPos !== null) {
+        positionChange = parseFloat((prevPos - currPos).toFixed(2));
+      }
 
       return {
-        ...kw,
+        id: kw.id,
+        keyword: kw.keyword,
+        clientId: kw.clientId,
+        clientName: kw.client?.name || "Client",
+        propertyId: kw.propertyId,
+        domain: kw.property?.domain || "Domain",
+        status: kw.status,
+        tags: kw.tags,
+        targetUrl: kw.targetUrl,
+        source: kw.source,
         currentPosition: currPos,
         previousPosition: prevPos,
         positionChange,
         clicks: currSnap ? currSnap.clicks : 0,
         impressions: currSnap ? currSnap.impressions : 0,
-        ctr: currSnap ? currSnap.ctr : 0.0,
+        ctr: currSnap ? currSnap.ctr : 0,
+        updatedAt: kw.updatedAt,
       };
     });
 
     if (positionGroup !== "All") {
-      const g = positionGroup.toLowerCase();
-      filteredKeywords = filteredKeywords.filter(kw => {
-        const pos = kw.currentPosition;
-        if (pos === null || pos === undefined) return false;
-        
-        if (g === "top3") return pos <= 3;
-        if (g === "top10") return pos <= 10;
-        if (g === "top20") return pos <= 20;
-        if (g === "strikingdistance") return pos >= 4 && pos <= 20;
-        if (g === "improved") return kw.positionChange !== null && kw.positionChange > 0;
-        if (g === "declined") return kw.positionChange !== null && kw.positionChange < 0;
-        if (g === "highimpressions") return kw.impressions >= 100;
-        if (g === "lowctr") return kw.impressions >= 100 && kw.ctr < 2.0;
+      filteredKeywords = filteredKeywords.filter(k => {
+        if (!k.currentPosition) return positionGroup === "Missing";
+        if (positionGroup === "Top 3") return k.currentPosition <= 3;
+        if (positionGroup === "Top 10") return k.currentPosition >= 4 && k.currentPosition <= 10;
+        if (positionGroup === "Top 20") return k.currentPosition >= 11 && k.currentPosition <= 20;
+        if (positionGroup === "Top 50") return k.currentPosition >= 21 && k.currentPosition <= 50;
         return true;
       });
     }
@@ -133,8 +137,8 @@ export async function POST(req: NextRequest) {
     }
 
     const tracked = await trackKeyword(
-      parseInt(clientId, 10),
-      parseInt(propertyId, 10),
+      clientId.toString(),
+      propertyId.toString(),
       keyword,
       "MANUAL",
       targetUrl || null,

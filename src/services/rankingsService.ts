@@ -23,7 +23,7 @@ export interface DiscoveredKeyword {
 }
 
 export const discoverKeywords = async (
-  propertyId: number,
+  propertyId: string | number,
   days: number = 30
 ): Promise<DiscoveredKeyword[]> => {
   const property = await prisma.websiteProperty.findUnique({
@@ -32,7 +32,7 @@ export const discoverKeywords = async (
   });
   if (!property) throw new Error("Property not found");
 
-  const gscConn = property.connections.find(c => c.provider === "GSC");
+  const gscConn = property.connections.find((c: any) => c.provider === "GSC");
   if (!gscConn || !gscConn.externalId) {
     return [];
   }
@@ -84,7 +84,7 @@ export const discoverKeywords = async (
     if (q) prevMap[q.toLowerCase().trim()] = row;
   }
 
-  const trackedSet = new Set(property.trackedKeywords.map(k => k.normalizedKeyword));
+  const trackedSet = new Set(property.trackedKeywords.map((k: any) => k.normalizedKeyword));
 
   const result: DiscoveredKeyword[] = [];
 
@@ -131,8 +131,8 @@ export const discoverKeywords = async (
 };
 
 export const trackKeyword = async (
-  clientId: number,
-  propertyId: number,
+  clientId: string | number,
+  propertyId: string | number,
   keyword: string,
   source: string = "MANUAL",
   targetUrl?: string | null,
@@ -148,12 +148,10 @@ export const trackKeyword = async (
   if (!client) throw new Error("Client not found");
 
   // Check unique key constraint manually
-  const existing = await prisma.trackedKeyword.findUnique({
+  const existing = await prisma.trackedKeyword.findFirst({
     where: {
-      propertyId_normalizedKeyword: {
-        propertyId,
-        normalizedKeyword: normalized,
-      }
+      propertyId,
+      normalizedKeyword: normalized,
     }
   });
 
@@ -196,7 +194,7 @@ export const trackKeyword = async (
       where: { id: propertyId },
       include: { connections: true }
     });
-    const gscConn = property?.connections.find(c => c.provider === "GSC");
+    const gscConn = property?.connections?.find((c: any) => c.provider === "GSC");
     if (gscConn && gscConn.externalId) {
       await syncPropertyKeywords(propertyId, 30);
     }
@@ -212,7 +210,7 @@ export const trackKeyword = async (
 // ====================================================
 
 export const syncPropertyKeywords = async (
-  propertyId: number,
+  propertyId: string | number,
   daysToSync: number = 30
 ) => {
   const property = await prisma.websiteProperty.findUnique({
@@ -222,7 +220,7 @@ export const syncPropertyKeywords = async (
 
   if (!property || property.trackedKeywords.length === 0) return;
 
-  const gscConn = property.connections.find(c => c.provider === "GSC");
+  const gscConn = property.connections.find((c: any) => c.provider === "GSC");
   if (!gscConn || !gscConn.externalId) return;
 
   const endDate = new Date();
@@ -330,8 +328,8 @@ export const syncPropertyKeywords = async (
 // ====================================================
 
 export const getRankingsOverview = async (
-  clientId?: number,
-  propertyId?: number,
+  clientId?: string | number,
+  propertyId?: string | number,
   daysRange: number = 30
 ) => {
   const where: any = { status: "ACTIVE" };
@@ -410,9 +408,9 @@ export const getRankingsOverview = async (
     }
 
     // Get current value (latest snapshot close to today)
-    const currentSnap = snaps.filter(s => s.position !== null && s.position > 0).pop();
+    const currentSnap = snaps.filter((s: any) => s.position !== null && s.position > 0).pop();
     // Get previous period comparator
-    const prevSnap = snaps.filter(s => s.date < prevCutoff && s.position !== null && s.position > 0).pop();
+    const prevSnap = snaps.filter((s: any) => s.date < prevCutoff && s.position !== null && s.position > 0).pop();
 
     if (!currentSnap || currentSnap.position === null) {
       positionGroups.missing++;
@@ -537,7 +535,7 @@ export const getRankingsOverview = async (
 export const logRankingActivity = async (
   actorEmail: string,
   action: string,
-  clientId: number,
+  clientId: string | number,
   clientName: string,
   metadata: any
 ) => {

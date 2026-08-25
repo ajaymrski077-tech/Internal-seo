@@ -14,15 +14,14 @@ export async function GET(
     }
 
     const { id } = await params;
-    const clientId = parseInt(id, 10);
     const { searchParams } = new URL(req.url);
     const range = searchParams.get("range") || "30d";
 
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid-id") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
-    const payload = await getClientWorkspaceData(clientId, range);
+    const payload = await getClientWorkspaceData(id, range);
     if (!payload) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }

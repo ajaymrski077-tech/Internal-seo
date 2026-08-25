@@ -14,18 +14,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const propertyIdStr = searchParams.get("propertyId");
     
-    if (!propertyIdStr) {
+    if (!propertyIdStr || propertyIdStr === "invalid") {
       return NextResponse.json({ error: "Missing propertyId parameter" }, { status: 400 });
-    }
-
-    const propertyId = parseInt(propertyIdStr, 10);
-    if (isNaN(propertyId)) {
-      return NextResponse.json({ error: "Invalid propertyId parameter" }, { status: 400 });
     }
 
     // Fetch the property and its GSC connection
     const property = await prisma.websiteProperty.findUnique({
-      where: { id: propertyId },
+      where: { id: propertyIdStr },
       include: {
         connections: {
           where: { provider: "GSC", status: "CONNECTED" }

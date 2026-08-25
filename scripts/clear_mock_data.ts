@@ -1,5 +1,4 @@
-import { getPrisma } from '../src/lib/db'
-const prisma = getPrisma()
+import prisma from '../src/lib/db';
 
 async function main() {
   await prisma.analyticsSnapshot.deleteMany()

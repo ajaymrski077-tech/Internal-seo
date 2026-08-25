@@ -24,12 +24,8 @@ export async function GET(req: NextRequest) {
     
     // Apply client filter
     if (clientId !== "All") {
-      where.clientId = parseInt(clientId, 10);
+      where.clientId = clientId;
     }
-
-    // Apply archived filter. "closed" means archived conceptually for this table, 
-    // but the screenshot showed closed tickets in a separate table.
-    // For now we just return all matching tickets, and let the frontend split them.
 
     const tickets = await prisma.ticket.findMany({
       where,
@@ -70,7 +66,7 @@ export async function POST(req: NextRequest) {
     const ticket = await prisma.ticket.create({
       data: {
         subject: subject.trim(),
-        clientId: parseInt(clientId, 10),
+        clientId: clientId.toString(),
         fromName: fromName.trim(),
         status: status || "open",
         priority: priority || "normal",

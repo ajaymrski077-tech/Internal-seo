@@ -222,8 +222,8 @@ export const syncPropertyData = async (propertyId: number, daysToSync: number = 
   });
   if (!property) throw new Error("Property not found");
 
-  const ga4Conn = property.connections.find(c => c.provider === "GA4");
-  const gscConn = property.connections.find(c => c.provider === "GSC");
+  const ga4Conn = property.connections.find((c: any) => c.provider === "GA4");
+  const gscConn = property.connections.find((c: any) => c.provider === "GSC");
 
   if (!ga4Conn && !gscConn) return;
 

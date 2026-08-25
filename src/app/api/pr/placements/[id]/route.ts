@@ -16,13 +16,12 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const placementId = parseInt(id, 10);
-    if (isNaN(placementId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid placement ID" }, { status: 400 });
     }
 
     const placement = await prisma.prPlacement.findUnique({
-      where: { id: placementId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -47,7 +46,7 @@ export async function PATCH(
     if (verified !== undefined) data.verifiedAt = verified ? new Date() : null;
 
     const updated = await prisma.prPlacement.update({
-      where: { id: placementId },
+      where: { id },
       data,
     });
 
@@ -80,13 +79,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const placementId = parseInt(id, 10);
-    if (isNaN(placementId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid placement ID" }, { status: 400 });
     }
 
     const placement = await prisma.prPlacement.findUnique({
-      where: { id: placementId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -97,7 +95,7 @@ export async function DELETE(
     }
 
     await prisma.prPlacement.delete({
-      where: { id: placementId },
+      where: { id },
     });
 
     // Log Activity

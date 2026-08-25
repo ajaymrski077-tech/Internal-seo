@@ -81,7 +81,7 @@ export async function isSafeUrl(urlStr: string): Promise<boolean> {
 // CORE LINK BUILDING LOGIC
 // ====================================================
 
-export const getLinkOverview = async (clientId?: number) => {
+export const getLinkOverview = async (clientId?: string | number) => {
   const today = new Date();
   
   const campaignWhere = clientId ? { clientId } : {};
@@ -160,7 +160,7 @@ export const getLinkOverview = async (clientId?: number) => {
 
 export const getCampaigns = async (filters: {
   search?: string;
-  clientId?: number;
+  clientId?: string | number;
   status?: string;
   priority?: string;
 }) => {
@@ -199,7 +199,7 @@ export const getCampaigns = async (filters: {
   });
 };
 
-export const getCampaignDetail = async (campaignId: number) => {
+export const getCampaignDetail = async (campaignId: string | number) => {
   const campaign = await prisma.linkCampaign.findUnique({
     where: { id: campaignId },
     include: {
@@ -221,9 +221,6 @@ export const getCampaignDetail = async (campaignId: number) => {
   const activityLogs = await prisma.activityLog.findMany({
     where: {
       clientId: campaign.clientId,
-      metadata: {
-        contains: `"campaignId":${campaignId}`,
-      },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -239,7 +236,7 @@ export const getCampaignDetail = async (campaignId: number) => {
 // REAL LINK VERIFICATION ENGINE
 // ====================================================
 
-export const verifyAcquiredBacklink = async (backlinkId: number) => {
+export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
   const backlink = await prisma.acquiredBacklink.findUnique({
     where: { id: backlinkId },
     include: {
@@ -394,7 +391,7 @@ export const verifyAcquiredBacklink = async (backlinkId: number) => {
 export const logLinkActivity = async (
   actorEmail: string,
   action: string,
-  clientId: number,
+  clientId: string | number,
   clientName: string,
   metadata: any
 ) => {

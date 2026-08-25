@@ -15,13 +15,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const outreach = await prisma.prOutreachRecord.findMany({
-      where: { campaignId },
+      where: { campaignId: id },
       include: {
         publication: true,
         contact: true,
@@ -49,13 +48,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const campaign = await prisma.prCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: { client: true }
     });
 
@@ -76,7 +74,7 @@ export async function POST(
     // 1. Reusable Publication Auto-create/lookup
     const pubNameTrimmed = publicationName.trim();
     let publication = await prisma.prPublication.findFirst({
-      where: { name: { equals: pubNameTrimmed } }
+      where: { name: pubNameTrimmed }
     });
 
     if (!publication) {
@@ -97,7 +95,7 @@ export async function POST(
     const contactNameTrimmed = contactName.trim();
     let contact = await prisma.prContact.findFirst({
       where: {
-        name: { equals: contactNameTrimmed },
+        name: contactNameTrimmed,
         publicationId: publication.id
       }
     });
@@ -116,7 +114,7 @@ export async function POST(
     // 3. Create Outreach Record
     const outreach = await prisma.prOutreachRecord.create({
       data: {
-        campaignId,
+        campaignId: id,
         publicationId: publication.id,
         contactId: contact.id,
         publicationName: pubNameTrimmed,
@@ -140,7 +138,7 @@ export async function POST(
       "PR_OUTREACH_ADDED",
       campaign.clientId,
       campaign.client.name,
-      { campaignId, campaignName: campaign.campaignName, outreachId: outreach.id, publicationName: pubNameTrimmed }
+      { campaignId: id, campaignName: campaign.campaignName, outreachId: outreach.id, publicationName: pubNameTrimmed }
     );
 
     return NextResponse.json(outreach, { status: 201 });

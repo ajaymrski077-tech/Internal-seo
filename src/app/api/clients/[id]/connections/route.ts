@@ -18,8 +18,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const clientId = parseInt(id, 10);
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
@@ -38,7 +37,7 @@ export async function POST(
 
     // Get client's primary property
     const property = await prisma.websiteProperty.findFirst({
-      where: { clientId },
+      where: { clientId: id },
     });
 
     if (!property) {
@@ -47,7 +46,7 @@ export async function POST(
 
     // Get client details to construct logs
     const clientRecord = await prisma.client.findUnique({
-      where: { id: clientId }
+      where: { id }
     });
     if (!clientRecord) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
@@ -58,92 +57,78 @@ export async function POST(
       where: { propertyId: property.id, provider },
     });
 
-    if (!existing) {
-      return NextResponse.json({ error: `Please connect your Google account for ${provider} first.` }, { status: 400 });
+    if (!existing || !existing.accessToken) {
+      return NextResponse.json({
+        error: "Google account is not authenticated for this client. Please authenticate via OAuth first."
+      }, { status: 400 });
     }
 
-    // 2. Perform Server-side Validation
-    if (provider === "GA4") {
-      if (!/^\d+$/.test(trimmedExternalId)) {
-        return NextResponse.json({ error: "Invalid GA4 Property ID. It must be numeric." }, { status: 400 });
-      }
-
-      try {
-        const properties = await listGa4Properties(existing.id);
-        const hasAccess = properties.some((p) => p.propertyId === trimmedExternalId);
-        if (!hasAccess) {
-          return NextResponse.json({ error: "Access denied. Your connected Google account does not have access to this GA4 property." }, { status: 403 });
+    // 2. Validate externalId against available properties from Google API
+    if (status !== "PAUSED") {
+      if (provider === "GA4") {
+        const available = await listGa4Properties(existing.id);
+        const valid = available.some(p => p.propertyId === trimmedExternalId);
+        if (!valid) {
+          return NextResponse.json({
+            error: "Selected GA4 Property ID was not found in your Google Analytics account."
+          }, { status: 400 });
         }
-      } catch (err: any) {
-        return NextResponse.json({ error: `Failed to validate property access: ${err.message}` }, { status: 400 });
-      }
-    } else if (provider === "GSC") {
-      if (
-        !trimmedExternalId.startsWith("sc-domain:") &&
-        !trimmedExternalId.startsWith("http://") &&
-        !trimmedExternalId.startsWith("https://")
-      ) {
-        return NextResponse.json({ error: "Invalid GSC Site URL prefix or sc-domain prefix." }, { status: 400 });
-      }
-
-      try {
-        const sites = await listGscSites(existing.id);
-        const hasAccess = sites.some((s) => s.siteUrl === trimmedExternalId);
-        if (!hasAccess) {
-          return NextResponse.json({ error: "Access denied. Your connected Google account does not have access to this GSC site." }, { status: 403 });
+      } else if (provider === "GSC") {
+        const available = await listGscSites(existing.id);
+        const valid = available.some(s => s.siteUrl === trimmedExternalId);
+        if (!valid) {
+          return NextResponse.json({
+            error: "Selected Google Search Console Site was not found in your GSC account."
+          }, { status: 400 });
         }
-      } catch (err: any) {
-        return NextResponse.json({ error: `Failed to validate site access: ${err.message}` }, { status: 400 });
       }
     }
 
-    // 3. Upsert connection
-    const connection = await prisma.$transaction(async (tx) => {
-      const conn = await tx.integrationConnection.update({
-        where: { id: existing.id },
-        data: {
-          externalId: trimmedExternalId,
-          status: status || "CONNECTED",
-          conversionEventName: conversionEventName !== undefined ? conversionEventName : existing.conversionEventName,
-          lastSyncTime: new Date(),
-          syncStatus: "SUCCESS",
-          syncError: null,
-        },
-      });
-
-      // Log activity
-      await (tx as any).activityLog.create({
-        data: {
-          actorEmail: user.email,
-          action: "INTEGRATION_CONNECTED",
-          clientId,
-          clientName: clientRecord.name,
-          metadata: JSON.stringify({ provider, status: conn.status, externalId: trimmedExternalId }),
-        },
-      });
-
-      return conn;
+    // 3. Upsert integration connection
+    const connection = await prisma.integrationConnection.update({
+      where: { id: existing.id },
+      data: {
+        externalId: trimmedExternalId,
+        status: status || "CONNECTED",
+        conversionEventName: provider === "GA4" ? (conversionEventName ? conversionEventName.trim() : null) : null,
+        syncStatus: "SUCCESS",
+        syncError: null,
+      },
     });
 
-    // 4. Run sync synchronously for this provider to confirm initial sync results
-    try {
-      await syncPropertyData(property.id);
-    } catch (syncError: any) {
-      console.error("Initial sync error:", syncError);
-      // Update connection to SYNC_ERROR/FAILED but keep connection saved
-      const updatedConn = await prisma.integrationConnection.update({
-        where: { id: connection.id },
-        data: {
-          status: "SYNC_ERROR",
-          syncStatus: "FAILED",
-          syncError: syncError.message,
-        }
-      });
-      const { accessToken, refreshToken, ...sanitized } = updatedConn;
-      return NextResponse.json(sanitized);
+    // 4. Trigger initial data sync synchronously on setup if connected
+    if (connection.status === "CONNECTED") {
+      try {
+        await syncPropertyData(property.id);
+      } catch (syncError: any) {
+        console.error("Initial data sync failed:", syncError);
+        // Do not fail the whole request, but update connection status
+        await prisma.integrationConnection.update({
+          where: { id: connection.id },
+          data: {
+            syncStatus: "ERROR",
+            syncError: syncError.message || "Failed initial data sync",
+          },
+        });
+      }
     }
 
-    // Fetch the updated connection after successful sync
+    // 5. Log activity
+    await prisma.activityLog.create({
+      data: {
+        actorEmail: user.email,
+        action: "INTEGRATION_CONNECTED",
+        clientId: id,
+        clientName: clientRecord.name,
+        metadata: JSON.stringify({
+          provider,
+          externalId: trimmedExternalId,
+          status: connection.status
+        }),
+      },
+    });
+
+    // Refresh connection to return final syncStatus
     const finalConnection = await prisma.integrationConnection.findUnique({
       where: { id: connection.id }
     });
@@ -170,11 +155,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const clientId = parseInt(id, 10);
     const { searchParams } = new URL(req.url);
     const provider = searchParams.get("provider");
 
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
@@ -183,7 +167,7 @@ export async function DELETE(
     }
 
     const property = await prisma.websiteProperty.findFirst({
-      where: { clientId },
+      where: { clientId: id },
     });
 
     if (!property) {
@@ -191,7 +175,7 @@ export async function DELETE(
     }
 
     const clientRecord = await prisma.client.findUnique({
-      where: { id: clientId }
+      where: { id }
     });
     if (!clientRecord) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
@@ -215,7 +199,7 @@ export async function DELETE(
         data: {
           actorEmail: user.email,
           action: "INTEGRATION_DISCONNECTED",
-          clientId,
+          clientId: id,
           clientName: clientRecord.name,
           metadata: JSON.stringify({ provider }),
         },

@@ -1,18 +1,17 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   email     String   @unique
   password  String
   name      String
@@ -21,51 +20,51 @@ model User {
 }
 
 model Client {
-  id             Int                 @id @default(autoincrement())
-  name           String
-  companyName    String?
-  logoUrl        String?
-  status         String              @default("ACTIVE") // ACTIVE, ONBOARDING, PAUSED, ARCHIVED
-  isArchived     Boolean             @default(false)
-  shareToken     String?             @unique
-  managerName    String?
-  notes          String?
-  startDate      DateTime?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  properties     WebsiteProperty[]
-  deliveryEvents DeliveryEvent[]
-  reports        Report[]
-  tickets        Ticket[]
-  tasks          Task[]
-  prCampaigns    PrCampaign[]
-  linkCampaigns  LinkCampaign[]
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  name            String
+  companyName     String?
+  logoUrl         String?
+  status          String            @default("ACTIVE") // ACTIVE, ONBOARDING, PAUSED, ARCHIVED
+  isArchived      Boolean           @default(false)
+  shareToken      String?           @unique
+  managerName     String?
+  notes           String?
+  startDate       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  properties      WebsiteProperty[]
+  deliveryEvents  DeliveryEvent[]
+  reports         Report[]
+  tickets         Ticket[]
+  tasks           Task[]
+  prCampaigns     PrCampaign[]
+  linkCampaigns   LinkCampaign[]
   trackedKeywords TrackedKeyword[]
 }
 
 model WebsiteProperty {
-  id             Int                 @id @default(autoincrement())
-  clientId       Int
-  client         Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  domain         String
-  name           String
-  brandType      String              @default("Non-Branded")
-  brandKeywords  String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  snapshots      AnalyticsSnapshot[]
-  connections    IntegrationConnection[]
-  deliveryEvents DeliveryEvent[]
-  reports        Report[]
+  id              String                  @id @default(auto()) @map("_id") @db.ObjectId
+  clientId        String                  @db.ObjectId
+  client          Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  domain          String
+  name            String
+  brandType       String                  @default("Non-Branded")
+  brandKeywords   String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  snapshots       AnalyticsSnapshot[]
+  connections     IntegrationConnection[]
+  deliveryEvents  DeliveryEvent[]
+  reports         Report[]
   trackedKeywords TrackedKeyword[]
-  seoAudits      SeoAudit[]
-  gbpLocation    GbpLocation?
-  contentItems   ContentItem[]
+  seoAudits       SeoAudit[]
+  gbpLocation     GbpLocation?
+  contentItems    ContentItem[]
 }
 
 model IntegrationConnection {
-  id                  Int             @id @default(autoincrement())
-  propertyId          Int
+  id                  String          @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId          String          @db.ObjectId
   property            WebsiteProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   provider            String          // GA4, GSC, GBP
   status              String          // CONNECTED, SYNC_ERROR, DISCONNECTED
@@ -82,12 +81,11 @@ model IntegrationConnection {
   gbpLocations        GbpLocation[]
 
   @@unique([propertyId, provider])
-  @@index([propertyId])
 }
 
 model AnalyticsSnapshot {
-  id             Int             @id @default(autoincrement())
-  propertyId     Int
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId     String          @db.ObjectId
   property       WebsiteProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   date           DateTime
   sessions       Int
@@ -98,15 +96,13 @@ model AnalyticsSnapshot {
   createdAt      DateTime        @default(now())
 
   @@unique([propertyId, date])
-  @@index([propertyId])
-  @@index([date])
 }
 
 model DeliveryEvent {
-  id             Int              @id @default(autoincrement())
-  clientId       Int
+  id             String           @id @default(auto()) @map("_id") @db.ObjectId
+  clientId       String           @db.ObjectId
   client         Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  propertyId     Int?
+  propertyId     String?          @db.ObjectId
   property       WebsiteProperty? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   type           String           // BACKLINK, CONTENT, MILESTONE
   date           DateTime
@@ -114,15 +110,11 @@ model DeliveryEvent {
   createdAt      DateTime         @default(now())
   contentDetails ContentDelivery?
   linkDetails    LinkDelivery?
-
-  @@index([clientId])
-  @@index([propertyId])
-  @@index([date])
 }
 
 model ContentDelivery {
-  id              Int           @id @default(autoincrement())
-  deliveryEventId Int           @unique
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  deliveryEventId String        @unique @db.ObjectId
   deliveryEvent   DeliveryEvent @relation(fields: [deliveryEventId], references: [id], onDelete: Cascade)
   title           String
   url             String
@@ -130,8 +122,8 @@ model ContentDelivery {
 }
 
 model LinkDelivery {
-  id              Int           @id @default(autoincrement())
-  deliveryEventId Int           @unique
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  deliveryEventId String        @unique @db.ObjectId
   deliveryEvent   DeliveryEvent @relation(fields: [deliveryEventId], references: [id], onDelete: Cascade)
   url             String
   anchorText      String
@@ -140,20 +132,20 @@ model LinkDelivery {
 }
 
 model ActivityLog {
-  id          Int      @id @default(autoincrement())
-  actorEmail  String   @default("admin@mistersk.com")
-  action      String   // CLIENT_CREATED, CLIENT_UPDATED, CLIENT_ARCHIVED, CLIENT_RESTORED, WEBSITE_CHANGED, INTEGRATION_CONNECTED, INTEGRATION_DISCONNECTED, SHARE_LINK_REGENERATED
-  clientId    Int?
-  clientName  String?
-  metadata    String?  // JSON string
-  createdAt   DateTime @default(now())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorEmail String   @default("admin@mistersk.com")
+  action     String   // CLIENT_CREATED, CLIENT_UPDATED, CLIENT_ARCHIVED, CLIENT_RESTORED, WEBSITE_CHANGED, INTEGRATION_CONNECTED, INTEGRATION_DISCONNECTED, SHARE_LINK_REGENERATED
+  clientId   String?  @db.ObjectId
+  clientName String?
+  metadata   String?  // JSON string
+  createdAt  DateTime @default(now())
 }
 
 model Report {
-  id              Int              @id @default(autoincrement())
-  clientId        Int
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  clientId        String           @db.ObjectId
   client          Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  propertyId      Int?
+  propertyId      String?          @db.ObjectId
   property        WebsiteProperty? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
   name            String
   dateRange       String           // "7d", "30d", "90d", "1y", "custom"
@@ -167,64 +159,53 @@ model Report {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   snapshots       ReportSnapshot[]
-
-  @@index([clientId])
-  @@index([propertyId])
 }
 
 model ReportSnapshot {
-  id             Int      @id @default(autoincrement())
-  reportId       Int
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  reportId       String   @db.ObjectId
   report         Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   metricsJson    String   // JSON string of metrics
   historyJson    String   // JSON string of current/previous period history
   deliveriesJson String   // JSON string of delivery events
   rankingsJson   String?  // JSON string of tracked keyword rankings snapshot
   generatedAt    DateTime @default(now())
-
-  @@index([reportId])
 }
 
 model Ticket {
-  id          Int      @id @default(autoincrement())
-  subject     String
-  clientId    Int
-  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  fromName    String
-  status      String   @default("open") // in progress, pending, open, closed
-  priority    String   @default("normal") // low, normal, high, urgent
-  assignedTo  String?  @default("—")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([clientId])
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  subject    String
+  clientId   String   @db.ObjectId
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  fromName   String
+  status     String   @default("open") // in progress, pending, open, closed
+  priority   String   @default("normal") // low, normal, high, urgent
+  assignedTo String?  @default("—")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
-  title       String
-  description String?
-  status      String    @default("TODO") // TODO, IN_PROGRESS, DONE
-  priority    String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
-  assignedTo  String?   @default("—")
-  clientId    Int?
-  client       Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  dueDate      DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  prCampaignId   Int?
-  prCampaign     PrCampaign? @relation(fields: [prCampaignId], references: [id], onDelete: SetNull)
-  linkCampaignId Int?
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  title          String
+  description    String?
+  status         String        @default("TODO") // TODO, IN_PROGRESS, DONE
+  priority       String        @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  assignedTo     String?       @default("—")
+  clientId       String?       @db.ObjectId
+  client         Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  dueDate        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  prCampaignId   String?       @db.ObjectId
+  prCampaign     PrCampaign?   @relation(fields: [prCampaignId], references: [id], onDelete: SetNull)
+  linkCampaignId String?       @db.ObjectId
   linkCampaign   LinkCampaign? @relation(fields: [linkCampaignId], references: [id], onDelete: SetNull)
-
-  @@index([clientId])
-  @@index([prCampaignId])
-  @@index([linkCampaignId])
 }
 
 model PrCampaign {
-  id              Int                @id @default(autoincrement())
-  clientId        Int
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
+  clientId        String             @db.ObjectId
   client          Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
   campaignName    String
   description     String?
@@ -240,12 +221,10 @@ model PrCampaign {
   tasks           Task[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
-
-  @@index([clientId])
 }
 
 model PrPublication {
-  id              Int                  @id @default(autoincrement())
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
   name            String
   website         String
   domain          String
@@ -255,33 +234,31 @@ model PrPublication {
   notes           String?
   contacts        PrContact[]
   outreachRecords PrOutreachRecord[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
 
 model PrContact {
-  id              Int                  @id @default(autoincrement())
+  id              String             @id @default(auto()) @map("_id") @db.ObjectId
   name            String
   email           String?
   role            String?
-  publicationId   Int?
-  publication     PrPublication?       @relation(fields: [publicationId], references: [id], onDelete: SetNull)
+  publicationId   String?            @db.ObjectId
+  publication     PrPublication?     @relation(fields: [publicationId], references: [id], onDelete: SetNull)
   website         String?
   notes           String?
   outreachRecords PrOutreachRecord[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-
-  @@index([publicationId])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
 
 model PrOutreachRecord {
-  id              Int            @id @default(autoincrement())
-  campaignId      Int
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  campaignId      String         @db.ObjectId
   campaign        PrCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  publicationId   Int?
+  publicationId   String?        @db.ObjectId
   publication     PrPublication? @relation(fields: [publicationId], references: [id], onDelete: SetNull)
-  contactId       Int?
+  contactId       String?        @db.ObjectId
   contact         PrContact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
   contactName     String
   contactEmail    String?
@@ -295,17 +272,13 @@ model PrOutreachRecord {
   placements      PrPlacement[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-
-  @@index([campaignId])
-  @@index([publicationId])
-  @@index([contactId])
 }
 
 model PrPlacement {
-  id              Int               @id @default(autoincrement())
-  campaignId      Int
+  id              String            @id @default(auto()) @map("_id") @db.ObjectId
+  campaignId      String            @db.ObjectId
   campaign        PrCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  outreachId      Int?
+  outreachId      String?           @db.ObjectId
   outreachRecord  PrOutreachRecord? @relation(fields: [outreachId], references: [id], onDelete: SetNull)
   publicationName String
   publicationUrl  String?
@@ -318,36 +291,31 @@ model PrPlacement {
   verifiedAt      DateTime?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
-
-  @@index([campaignId])
-  @@index([outreachId])
 }
 
 model LinkCampaign {
-  id             Int               @id @default(autoincrement())
-  clientId       Int
-  client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  name           String
-  description    String?
-  objective      String?
-  status         String            @default("DRAFT") // DRAFT, ACTIVE, PAUSED, COMPLETED, CANCELLED
-  priority       String            @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
-  startDate      DateTime?
-  targetDate     DateTime?
-  completedDate  DateTime?
-  monthlyTarget  Int?
-  opportunities  LinkOpportunity[]
-  acquiredLinks  AcquiredBacklink[]
-  tasks          Task[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-
-  @@index([clientId])
+  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String             @db.ObjectId
+  client        Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  objective     String?
+  status        String             @default("DRAFT") // DRAFT, ACTIVE, PAUSED, COMPLETED, CANCELLED
+  priority      String             @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  startDate     DateTime?
+  targetDate    DateTime?
+  completedDate DateTime?
+  monthlyTarget Int?
+  opportunities LinkOpportunity[]
+  acquiredLinks AcquiredBacklink[]
+  tasks         Task[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 }
 
 model LinkOpportunity {
-  id                 Int                @id @default(autoincrement())
-  campaignId         Int
+  id                 String             @id @default(auto()) @map("_id") @db.ObjectId
+  campaignId         String             @db.ObjectId
   campaign           LinkCampaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   domain             String
   websiteName        String
@@ -369,15 +337,13 @@ model LinkOpportunity {
   acquiredLinks      AcquiredBacklink[]
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
-
-  @@index([campaignId])
 }
 
 model AcquiredBacklink {
-  id              Int              @id @default(autoincrement())
-  campaignId      Int
+  id              String           @id @default(auto()) @map("_id") @db.ObjectId
+  campaignId      String           @db.ObjectId
   campaign        LinkCampaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  opportunityId   Int?
+  opportunityId   String?          @db.ObjectId
   opportunity     LinkOpportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
   sourceDomain    String
   sourceUrl       String
@@ -391,16 +357,13 @@ model AcquiredBacklink {
   notes           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-
-  @@index([campaignId])
-  @@index([opportunityId])
 }
 
 model TrackedKeyword {
-  id                Int                      @id @default(autoincrement())
-  clientId          Int
+  id                String                   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId          String                   @db.ObjectId
   client            Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  propertyId        Int
+  propertyId        String                   @db.ObjectId
   property          WebsiteProperty          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   keyword           String
   normalizedKeyword String
@@ -413,13 +376,11 @@ model TrackedKeyword {
   updatedAt         DateTime                 @updatedAt
 
   @@unique([propertyId, normalizedKeyword])
-  @@index([clientId])
-  @@index([propertyId])
 }
 
 model KeywordRankingSnapshot {
-  id               Int            @id @default(autoincrement())
-  trackedKeywordId Int
+  id               String         @id @default(auto()) @map("_id") @db.ObjectId
+  trackedKeywordId String         @db.ObjectId
   trackedKeyword   TrackedKeyword @relation(fields: [trackedKeywordId], references: [id], onDelete: Cascade)
   date             DateTime
   position         Float?
@@ -429,118 +390,107 @@ model KeywordRankingSnapshot {
   createdAt        DateTime       @default(now())
 
   @@unique([trackedKeywordId, date])
-  @@index([trackedKeywordId])
 }
 
 model SeoAudit {
-  id              Int        @id @default(autoincrement())
-  propertyId      Int
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId      String          @db.ObjectId
   property        WebsiteProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  status          String     @default("QUEUED") // QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED
+  status          String          @default("QUEUED") // QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED
   score           Float?
-  pagesDiscovered Int        @default(0)
-  pagesCrawled    Int        @default(0)
-  issuesCritical  Int        @default(0)
-  issuesHigh      Int        @default(0)
-  issuesMedium    Int        @default(0)
-  issuesLow       Int        @default(0)
-  issuesInfo      Int        @default(0)
-  configuration   String     @default("{}") // JSON: maxPages, maxDepth, concurrency, respectRobots, etc.
+  pagesDiscovered Int             @default(0)
+  pagesCrawled    Int             @default(0)
+  issuesCritical  Int             @default(0)
+  issuesHigh      Int             @default(0)
+  issuesMedium    Int             @default(0)
+  issuesLow       Int             @default(0)
+  issuesInfo      Int             @default(0)
+  configuration   String          @default("{}") // JSON
   errorMessage    String?
   startTime       DateTime?
   endTime         DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   pages           SeoPage[]
   issues          SeoIssue[]
-
-  @@index([propertyId])
 }
 
 model SeoPage {
-  id              Int        @id @default(autoincrement())
-  auditId         Int
-  audit           SeoAudit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  url             String
-  normalizedUrl   String
-  statusCode      Int?
-  finalUrl        String?
-  contentType     String?
-  responseMs      Int?
-  htmlSize        Int?
-  wordCount       Int?
-  title           String?
-  titleLength     Int?
-  metaDescription String?
-  metaDescLength  Int?
-  h1              String?
-  h1Count         Int        @default(0)
-  h2Count         Int        @default(0)
-  h3Count         Int        @default(0)
-  canonical       String?
+  id               String     @id @default(auto()) @map("_id") @db.ObjectId
+  auditId          String     @db.ObjectId
+  audit            SeoAudit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  url              String
+  normalizedUrl    String
+  statusCode       Int?
+  finalUrl         String?
+  contentType      String?
+  responseMs       Int?
+  htmlSize         Int?
+  wordCount        Int?
+  title            String?
+  titleLength      Int?
+  metaDescription  String?
+  metaDescLength   Int?
+  h1               String?
+  h1Count          Int        @default(0)
+  h2Count          Int        @default(0)
+  h3Count          Int        @default(0)
+  canonical        String?
   canonicalIsValid Boolean?
-  robotsMeta      String?
-  isNoindex       Boolean    @default(false)
-  isNofollow      Boolean    @default(false)
-  internalLinks   Int        @default(0)
-  externalLinks   Int        @default(0)
-  imageCount      Int        @default(0)
-  missingAltCount Int        @default(0)
-  isIndexable     Boolean    @default(true)
-  depth           Int        @default(0)
-  redirectChain   String?    // JSON array of redirect URLs
-  createdAt       DateTime   @default(now())
-  issues          SeoIssue[]
+  robotsMeta       String?
+  isNoindex        Boolean    @default(false)
+  isNofollow       Boolean    @default(false)
+  internalLinks    Int        @default(0)
+  externalLinks    Int        @default(0)
+  imageCount       Int        @default(0)
+  missingAltCount  Int        @default(0)
+  isIndexable      Boolean    @default(true)
+  depth            Int        @default(0)
+  redirectChain    String?    // JSON array of redirect URLs
+  createdAt        DateTime   @default(now())
+  issues           SeoIssue[]
 
   @@unique([auditId, normalizedUrl])
-  @@index([auditId])
 }
 
 model SeoIssue {
-  id              Int        @id @default(autoincrement())
-  auditId         Int
-  audit           SeoAudit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  pageId          Int?
-  page            SeoPage?   @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  type            String     // MISSING_TITLE, DUPLICATE_TITLE, TITLE_TOO_LONG, etc.
-  severity        String     // CRITICAL, HIGH, MEDIUM, LOW, INFO
-  description     String
-  recommendation  String?
-  url             String?
-  createdAt       DateTime   @default(now())
-
-  @@index([auditId])
-  @@index([pageId])
-  @@index([type])
-  @@index([severity])
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  auditId        String   @db.ObjectId
+  audit          SeoAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  pageId         String?  @db.ObjectId
+  page           SeoPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type           String   // MISSING_TITLE, DUPLICATE_TITLE, TITLE_TOO_LONG, etc.
+  severity       String   // CRITICAL, HIGH, MEDIUM, LOW, INFO
+  description    String
+  recommendation String?
+  url            String?
+  createdAt      DateTime @default(now())
 }
 
 model GbpLocation {
-  id              Int              @id @default(autoincrement())
-  propertyId      Int              @unique
-  property        WebsiteProperty  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  connectionId    Int
-  connection      IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  locationName    String           // e.g. locations/123456
-  accountName     String           // e.g. accounts/987654
-  displayName     String           // Business name
+  id              String                   @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId      String                   @unique @db.ObjectId
+  property        WebsiteProperty          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  connectionId    String                   @db.ObjectId
+  connection      IntegrationConnection    @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  locationName    String                   // e.g. locations/123456
+  accountName     String                   // e.g. accounts/987654
+  displayName     String                   // Business name
   primaryCategory String?
   address         String?
   phone           String?
   websiteUri      String?
-  syncStatus      String           @default("CONNECTED") // CONNECTED, DISCONNECTED, EXPIRED, ERROR, SYNCING
+  syncStatus      String                   @default("CONNECTED") // CONNECTED, DISCONNECTED, EXPIRED, ERROR, SYNCING
   syncError       String?
   lastSyncTime    DateTime?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
   snapshots       GbpPerformanceSnapshot[]
-
-  @@index([connectionId])
 }
 
 model GbpPerformanceSnapshot {
-  id               Int         @id @default(autoincrement())
-  locationId       Int
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  locationId       String      @db.ObjectId
   location         GbpLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
   date             DateTime
   viewsSearch      Int         @default(0)
@@ -553,13 +503,11 @@ model GbpPerformanceSnapshot {
   createdAt        DateTime    @default(now())
 
   @@unique([locationId, date])
-  @@index([locationId])
-  @@index([date])
 }
 
 model ContentItem {
-  id            Int             @id @default(autoincrement())
-  propertyId    Int
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  propertyId    String          @db.ObjectId
   property      WebsiteProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   title         String
   targetKeyword String
@@ -575,32 +523,29 @@ model ContentItem {
   updatedAt     DateTime        @updatedAt
   brief         ContentBrief?
   draft         ContentDraft?
-
-  @@index([propertyId])
-  @@index([status])
 }
 
 model ContentBrief {
-  id               Int         @id @default(autoincrement())
-  contentItemId    Int         @unique
-  contentItem      ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  primaryKeywords  String?
+  id                String      @id @default(auto()) @map("_id") @db.ObjectId
+  contentItemId     String      @unique @db.ObjectId
+  contentItem       ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  primaryKeywords   String?
   secondaryKeywords String?
-  targetAudience   String?
-  suggestedUrl     String?
-  seoTitle         String?
-  metaDescription  String?
-  wordCountTarget  Int?
-  outline          String?     // Markdown Outline
-  internalLinking  String?
-  writerNotes      String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  targetAudience    String?
+  suggestedUrl      String?
+  seoTitle          String?
+  metaDescription   String?
+  wordCountTarget   Int?
+  outline           String?     // Markdown Outline
+  internalLinking   String?
+  writerNotes       String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 }
 
 model ContentDraft {
-  id            Int         @id @default(autoincrement())
-  contentItemId Int         @unique
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  contentItemId String      @unique @db.ObjectId
   contentItem   ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
   body          String?     // HTML or markdown editor body
   reviewNotes   String?

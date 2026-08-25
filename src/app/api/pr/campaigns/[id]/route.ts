@@ -15,12 +15,11 @@ export async function GET(
     }
 
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
-    const campaign = await getCampaignDetail(campaignId);
+    const campaign = await getCampaignDetail(id);
     if (!campaign) {
       return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
     }
@@ -45,13 +44,12 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const campaign = await prisma.prCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: { client: true }
     });
 
@@ -74,7 +72,7 @@ export async function PATCH(
     if (budget !== undefined) data.budget = budget ? parseFloat(budget) : null;
 
     const updated = await prisma.prCampaign.update({
-      where: { id: campaignId },
+      where: { id },
       data,
     });
 
@@ -117,13 +115,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const campaign = await prisma.prCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: { client: true }
     });
 
@@ -132,7 +129,7 @@ export async function DELETE(
     }
 
     await prisma.prCampaign.delete({
-      where: { id: campaignId },
+      where: { id },
     });
 
     // Log activity

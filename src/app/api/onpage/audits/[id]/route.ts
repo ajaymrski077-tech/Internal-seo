@@ -14,12 +14,11 @@ export async function GET(
     }
 
     const { id } = await params;
-    const auditId = parseInt(id, 10);
-    if (isNaN(auditId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid audit ID" }, { status: 400 });
     }
 
-    const audit = await getAuditById(auditId);
+    const audit = await getAuditById(id);
     if (!audit) {
       return NextResponse.json({ error: "SEO audit not found" }, { status: 404 });
     }
@@ -43,17 +42,16 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const auditId = parseInt(id, 10);
-    if (isNaN(auditId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid audit ID" }, { status: 400 });
     }
 
-    const audit = await getAuditById(auditId);
+    const audit = await getAuditById(id);
     if (!audit) {
       return NextResponse.json({ error: "SEO audit not found" }, { status: 404 });
     }
 
-    await deleteAudit(auditId);
+    await deleteAudit(id);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("SEO Audit delete error:", error);

@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const provider = searchParams.get("provider"); // GA4 or GSC
     const externalId = searchParams.get("externalId") || "";
 
-    if (!clientId || isNaN(parseInt(clientId, 10))) {
+    if (!clientId || clientId.trim() === "" || clientId === "invalid") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
     if (!provider || !["GA4", "GSC", "GBP"].includes(provider)) {

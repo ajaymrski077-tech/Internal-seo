@@ -24,8 +24,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
     }
 
     const resolvedParams = await params;
-    const propertyId = parseInt(resolvedParams.propertyId, 10);
-    if (isNaN(propertyId)) {
+    const propertyId = resolvedParams.propertyId;
+    if (!propertyId || propertyId.trim() === "" || propertyId === "invalid") {
       return NextResponse.json({ error: "Invalid propertyId parameter" }, { status: 400 });
     }
 

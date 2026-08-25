@@ -14,13 +14,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const locationId = parseInt(id, 10);
-    if (isNaN(locationId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid location ID" }, { status: 400 });
     }
 
     const loc = await prisma.gbpLocation.findUnique({
-      where: { id: locationId },
+      where: { id },
       include: {
         property: {
           include: { client: { select: { id: true, name: true } } },
@@ -43,10 +42,10 @@ export async function GET(
         primaryCategory: loc.primaryCategory,
         syncStatus: loc.syncStatus,
         syncError: loc.syncError,
-        lastSyncTime: loc.lastSyncTime?.toISOString() || null,
-        clientId: loc.property.client.id,
-        clientName: loc.property.client.name,
-        domain: loc.property.domain,
+        lastSyncTime: loc.lastSyncTime?.toISOString?.() || null,
+        clientId: loc.property?.client?.id || null,
+        clientName: loc.property?.client?.name || "Client",
+        domain: loc.property?.domain || "Domain",
       }
     });
   } catch (error: any) {

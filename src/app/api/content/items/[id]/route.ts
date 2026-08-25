@@ -14,13 +14,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const itemId = parseInt(id, 10);
-    if (isNaN(itemId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
     const item = await prisma.contentItem.findUnique({
-      where: { id: itemId },
+      where: { id },
       include: { brief: true, draft: true }
     });
 
@@ -47,8 +46,7 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const itemId = parseInt(id, 10);
-    if (isNaN(itemId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
@@ -56,7 +54,7 @@ export async function PATCH(
     const { title, targetKeyword, searchIntent, contentType, priority, liveUrl, publishDate, pubNotes } = body;
 
     const item = await prisma.contentItem.findUnique({
-      where: { id: itemId }
+      where: { id }
     });
 
     if (!item) {
@@ -64,7 +62,7 @@ export async function PATCH(
     }
 
     const updated = await prisma.contentItem.update({
-      where: { id: itemId },
+      where: { id },
       data: {
         ...(title !== undefined && { title }),
         ...(targetKeyword !== undefined && { targetKeyword }),
@@ -98,13 +96,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const itemId = parseInt(id, 10);
-    if (isNaN(itemId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
     const item = await prisma.contentItem.findUnique({
-      where: { id: itemId },
+      where: { id },
       include: { property: true }
     });
 
@@ -113,16 +110,17 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.contentItem.delete({ where: { id: itemId } });
+      const dbTx = tx as any;
+      await dbTx.contentItem.delete({ where: { id } });
 
       // Log action
-      await tx.activityLog.create({
+      await dbTx.activityLog.create({
         data: {
           actorEmail: user.email,
           action: "CONTENT_ITEM_DELETED",
-          clientId: item.property.clientId,
+          clientId: item.property?.clientId || null,
           clientName: "System",
-          metadata: JSON.stringify({ itemId, title: item.title })
+          metadata: JSON.stringify({ itemId: id, title: item.title })
         }
       });
     });

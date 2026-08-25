@@ -7,14 +7,14 @@ import { useToast } from "@/components/ToastContext";
 import { handleApiError } from "@/lib/apiUtils";
 
 interface ClientModalProps {
-  clientId: number;
+  clientId: string | number;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void; // Triggered after saving edits to reload dashboard data
 }
 
 interface ConnectionDetail {
-  id: number;
+  id: string | number;
   provider: string;
   status: string;
   syncStatus: string | null;
@@ -23,7 +23,7 @@ interface ConnectionDetail {
 }
 
 interface PropertyDetail {
-  id: number;
+  id: string | number;
   domain: string;
   name: string;
   connections: ConnectionDetail[];

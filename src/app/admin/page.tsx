@@ -24,7 +24,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState("");
 
   // Modals state
-  const [activeModalClientId, setActiveModalClientId] = useState<number | null>(null);
+  const [activeModalClientId, setActiveModalClientId] = useState<string | number | null>(null);
   const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const [overviewEvents, setOverviewEvents] = useState<DeliveryDetail[]>([]);
 
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
     setOverviewEvents(events);
   };
 
-  const handleEditClient = (id: number) => {
+  const handleEditClient = (id: string | number) => {
     setActiveModalClientId(id);
   };
 

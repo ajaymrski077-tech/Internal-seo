@@ -15,12 +15,11 @@ export async function POST(
     }
 
     const { id } = await params;
-    const reportId = parseInt(id, 10);
-    if (isNaN(reportId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
     }
 
-    const snapshot = await generateReportSnapshot(reportId, user.email);
+    const snapshot = await generateReportSnapshot(id, user.email);
     return NextResponse.json({ success: true, snapshotId: snapshot.id });
   } catch (error: any) {
     console.error("Report snapshot regeneration API error:", error);

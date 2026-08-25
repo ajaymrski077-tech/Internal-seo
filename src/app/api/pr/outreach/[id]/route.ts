@@ -16,13 +16,12 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const outreachId = parseInt(id, 10);
-    if (isNaN(outreachId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid outreach ID" }, { status: 400 });
     }
 
     const outreach = await prisma.prOutreachRecord.findUnique({
-      where: { id: outreachId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -45,7 +44,7 @@ export async function PATCH(
     if (contactEmail !== undefined) data.contactEmail = contactEmail?.trim() || null;
 
     const updated = await prisma.prOutreachRecord.update({
-      where: { id: outreachId },
+      where: { id },
       data,
       include: {
         publication: true,
@@ -91,13 +90,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const outreachId = parseInt(id, 10);
-    if (isNaN(outreachId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid outreach ID" }, { status: 400 });
     }
 
     const outreach = await prisma.prOutreachRecord.findUnique({
-      where: { id: outreachId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -108,7 +106,7 @@ export async function DELETE(
     }
 
     await prisma.prOutreachRecord.delete({
-      where: { id: outreachId },
+      where: { id },
     });
 
     // Log Activity

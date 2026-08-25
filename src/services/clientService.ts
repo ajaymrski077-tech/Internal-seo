@@ -2,7 +2,7 @@ import prisma from "@/lib/db";
 import crypto from "crypto";
 
 export interface ClientListItem {
-  id: number;
+  id: string | number;
   name: string;
   companyName: string | null;
   logoUrl: string | null;
@@ -158,12 +158,12 @@ export const getClientsList = async (params: {
   ]);
 
   // Map to List Item interfaces
-  const clients: ClientListItem[] = dbClients.map((client) => {
-    const primaryProperty = client.properties[0];
+  const clients: ClientListItem[] = dbClients.map((client: any) => {
+    const primaryProperty = client.properties?.[0];
     const primaryDomain = primaryProperty ? primaryProperty.domain : "no-website.com";
 
-    const ga4Conn = primaryProperty?.connections.find((c) => c.provider === "GA4");
-    const gscConn = primaryProperty?.connections.find((c) => c.provider === "GSC");
+    const ga4Conn = primaryProperty?.connections?.find((c: any) => c.provider === "GA4");
+    const gscConn = primaryProperty?.connections?.find((c: any) => c.provider === "GSC");
 
     const ga4Status = ga4Conn ? ga4Conn.status : "DISCONNECTED";
     const gscStatus = gscConn ? gscConn.status : "DISCONNECTED";
@@ -280,7 +280,7 @@ export const createClient = async (
 
 export const updateClientDetails = async (
   actorEmail: string,
-  clientId: number,
+  clientId: string | number,
   data: {
     name?: string;
     companyName?: string | null;
@@ -379,7 +379,7 @@ export const updateClientDetails = async (
   return updatedClient;
 };
 
-export const archiveClientRecord = async (actorEmail: string, clientId: number) => {
+export const archiveClientRecord = async (actorEmail: string, clientId: string | number) => {
   const client = await prisma.$transaction(async (tx) => {
     const original = await tx.client.findUnique({ where: { id: clientId } });
     if (!original) throw new Error("Client not found");
@@ -406,7 +406,7 @@ export const archiveClientRecord = async (actorEmail: string, clientId: number) 
   return client;
 };
 
-export const restoreClientRecord = async (actorEmail: string, clientId: number) => {
+export const restoreClientRecord = async (actorEmail: string, clientId: string | number) => {
   const client = await prisma.$transaction(async (tx) => {
     const original = await tx.client.findUnique({ where: { id: clientId } });
     if (!original) throw new Error("Client not found");
@@ -433,7 +433,7 @@ export const restoreClientRecord = async (actorEmail: string, clientId: number) 
   return client;
 };
 
-export const regenerateShareTokenRecord = async (actorEmail: string, clientId: number) => {
+export const regenerateShareTokenRecord = async (actorEmail: string, clientId: string | number) => {
   const shareToken = crypto.randomUUID();
   
   const client = await prisma.$transaction(async (tx) => {

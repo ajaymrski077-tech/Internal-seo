@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (clientId !== "All") {
-      where.clientId = parseInt(clientId, 10);
+      where.clientId = clientId;
     }
 
     if (search) {
@@ -71,10 +71,10 @@ export async function POST(req: NextRequest) {
         status: status || "TODO",
         priority: priority || "NORMAL",
         assignedTo: assignedTo || null,
-        clientId: clientId ? parseInt(clientId, 10) : null,
+        clientId: clientId ? clientId.toString() : null,
         dueDate: dueDate ? new Date(dueDate) : null,
-        prCampaignId: prCampaignId ? parseInt(prCampaignId, 10) : null,
-        linkCampaignId: linkCampaignId ? parseInt(linkCampaignId, 10) : null,
+        prCampaignId: prCampaignId ? prCampaignId.toString() : null,
+        linkCampaignId: linkCampaignId ? linkCampaignId.toString() : null,
       },
       include: {
         client: { select: { name: true } }

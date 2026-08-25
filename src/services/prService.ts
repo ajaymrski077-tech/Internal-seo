@@ -1,6 +1,6 @@
 import prisma from "@/lib/db";
 
-export const getPrOverview = async (clientId?: number) => {
+export const getPrOverview = async (clientId?: string | number) => {
   const today = new Date();
 
   const campaignWhere = clientId ? { clientId } : {};
@@ -88,7 +88,7 @@ export const getPrOverview = async (clientId?: number) => {
 
 export const getCampaigns = async (filters: {
   search?: string;
-  clientId?: number;
+  clientId?: string | number;
   status?: string;
   priority?: string;
 }) => {
@@ -127,7 +127,7 @@ export const getCampaigns = async (filters: {
   });
 };
 
-export const getCampaignDetail = async (campaignId: number) => {
+export const getCampaignDetail = async (campaignId: string | number) => {
   const campaign = await prisma.prCampaign.findUnique({
     where: { id: campaignId },
     include: {
@@ -150,13 +150,9 @@ export const getCampaignDetail = async (campaignId: number) => {
 
   if (!campaign) return null;
 
-  // Retrieve ActivityLogs linked to this client/campaign (we match campaign activities via log metadata or client context)
   const activityLogs = await prisma.activityLog.findMany({
     where: {
       clientId: campaign.clientId,
-      metadata: {
-        contains: `"campaignId":${campaignId}`,
-      },
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -172,7 +168,7 @@ export const getCampaignDetail = async (campaignId: number) => {
 export const logPrActivity = async (
   actorEmail: string,
   action: string,
-  clientId: number,
+  clientId: string | number,
   clientName: string,
   metadata: any
 ) => {

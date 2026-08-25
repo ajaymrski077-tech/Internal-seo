@@ -15,13 +15,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const backlinks = await prisma.acquiredBacklink.findMany({
-      where: { campaignId },
+      where: { campaignId: id },
       include: { opportunity: true },
       orderBy: { updatedAt: "desc" },
     });
@@ -46,13 +45,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const campaign = await prisma.linkCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: { client: true }
     });
 
@@ -78,8 +76,8 @@ export async function POST(
 
     const backlink = await prisma.acquiredBacklink.create({
       data: {
-        campaignId,
-        opportunityId: opportunityId ? parseInt(opportunityId, 10) : null,
+        campaignId: id,
+        opportunityId: opportunityId ? opportunityId.toString() : null,
         sourceDomain: sourceDomain.trim().toLowerCase(),
         sourceUrl: sourceUrl.trim(),
         targetUrl: targetUrl.trim(),
@@ -97,7 +95,7 @@ export async function POST(
       "LINK_BACKLINK_CREATED",
       campaign.clientId,
       campaign.client.name,
-      { campaignId, campaignName: campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain }
+      { campaignId: id, campaignName: campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain }
     );
 
     return NextResponse.json(backlink, { status: 201 });

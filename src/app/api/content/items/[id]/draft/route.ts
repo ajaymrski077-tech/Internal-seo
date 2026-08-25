@@ -14,13 +14,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const itemId = parseInt(id, 10);
-    if (isNaN(itemId)) {
+    if (!id || id.trim() === "") {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
     const draft = await prisma.contentDraft.findUnique({
-      where: { contentItemId: itemId }
+      where: { contentItemId: id }
     });
 
     return NextResponse.json({ draft });
@@ -42,8 +41,7 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const itemId = parseInt(id, 10);
-    if (isNaN(itemId)) {
+    if (!id || id.trim() === "") {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
@@ -51,13 +49,13 @@ export async function POST(
     const { body, reviewNotes } = bodyData;
 
     const draft = await prisma.contentDraft.upsert({
-      where: { contentItemId: itemId },
+      where: { contentItemId: id },
       update: {
         ...(body !== undefined && { body }),
         ...(reviewNotes !== undefined && { reviewNotes })
       },
       create: {
-        contentItemId: itemId,
+        contentItemId: id,
         body: body || null,
         reviewNotes: reviewNotes || null
       }

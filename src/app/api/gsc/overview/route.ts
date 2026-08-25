@@ -30,13 +30,13 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const data = properties.map(p => {
+    const data = properties.map((p: any) => {
       let totalClicks = 0;
       let totalImpressions = 0;
       let positionSum = 0;
       let count = 0;
 
-      const chartData = p.snapshots.map(s => {
+      const chartData = p.snapshots.map((s: any) => {
         totalClicks += s.organicTraffic;
         totalImpressions += s.gscImpressions;
         if (s.gscPosition > 0) {

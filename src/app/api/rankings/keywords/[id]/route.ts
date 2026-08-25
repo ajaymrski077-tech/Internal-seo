@@ -16,13 +16,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const keywordId = parseInt(id, 10);
-    if (isNaN(keywordId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid keyword ID" }, { status: 400 });
     }
 
     const keyword = await prisma.trackedKeyword.findUnique({
-      where: { id: keywordId },
+      where: { id },
       include: {
         client: { select: { name: true } },
         property: { select: { domain: true } },
@@ -39,9 +38,6 @@ export async function GET(
     const activityLogs = await prisma.activityLog.findMany({
       where: {
         clientId: keyword.clientId,
-        metadata: {
-          contains: `"keywordId":${keywordId}`,
-        }
       },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -70,13 +66,12 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const keywordId = parseInt(id, 10);
-    if (isNaN(keywordId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid keyword ID" }, { status: 400 });
     }
 
     const keywordObj = await prisma.trackedKeyword.findUnique({
-      where: { id: keywordId },
+      where: { id },
       include: { client: true }
     });
 
@@ -93,7 +88,7 @@ export async function PATCH(
     if (targetUrl !== undefined) data.targetUrl = targetUrl || null;
 
     const updated = await prisma.trackedKeyword.update({
-      where: { id: keywordId },
+      where: { id },
       data,
     });
 
@@ -105,7 +100,7 @@ export async function PATCH(
         act,
         keywordObj.clientId,
         keywordObj.client.name,
-        { keywordId, keyword: keywordObj.keyword }
+        { keywordId: id, keyword: keywordObj.keyword }
       );
     } else {
       await logRankingActivity(
@@ -113,7 +108,7 @@ export async function PATCH(
         "KEYWORD_UPDATED",
         keywordObj.clientId,
         keywordObj.client.name,
-        { keywordId, keyword: keywordObj.keyword }
+        { keywordId: id, keyword: keywordObj.keyword }
       );
     }
 
@@ -137,13 +132,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const keywordId = parseInt(id, 10);
-    if (isNaN(keywordId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid keyword ID" }, { status: 400 });
     }
 
     const keywordObj = await prisma.trackedKeyword.findUnique({
-      where: { id: keywordId },
+      where: { id },
       include: { client: true }
     });
 
@@ -152,7 +146,7 @@ export async function DELETE(
     }
 
     await prisma.trackedKeyword.delete({
-      where: { id: keywordId },
+      where: { id },
     });
 
     // Log activity
@@ -161,7 +155,7 @@ export async function DELETE(
       "KEYWORD_DELETED",
       keywordObj.clientId,
       keywordObj.client.name,
-      { keywordId, keyword: keywordObj.keyword }
+      { keywordId: id, keyword: keywordObj.keyword }
     );
 
     return NextResponse.json({ success: true });

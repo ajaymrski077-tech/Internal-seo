@@ -15,13 +15,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const placements = await prisma.prPlacement.findMany({
-      where: { campaignId },
+      where: { campaignId: id },
       orderBy: { publishedDate: "desc" },
     });
 
@@ -45,13 +44,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const campaign = await prisma.prCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: { client: true }
     });
 
@@ -74,8 +72,8 @@ export async function POST(
 
     const placement = await prisma.prPlacement.create({
       data: {
-        campaignId,
-        outreachId: outreachId ? parseInt(outreachId, 10) : null,
+        campaignId: id,
+        outreachId: outreachId ? outreachId.toString() : null,
         publicationName: publicationName.trim(),
         publicationUrl: publicationUrl?.trim() || null,
         articleTitle: articleTitle.trim(),
@@ -94,7 +92,7 @@ export async function POST(
       "PR_PLACEMENT_ADDED",
       campaign.clientId,
       campaign.client.name,
-      { campaignId, campaignName: campaign.campaignName, placementId: placement.id, publicationName: placement.publicationName, articleTitle: placement.articleTitle }
+      { campaignId: id, campaignName: campaign.campaignName, placementId: placement.id, publicationName: placement.publicationName, articleTitle: placement.articleTitle }
     );
 
     return NextResponse.json(placement, { status: 201 });

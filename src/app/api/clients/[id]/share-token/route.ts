@@ -15,13 +15,11 @@ export async function POST(
     }
 
     const { id } = await params;
-    const clientId = parseInt(id, 10);
-
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid-id") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
-    const client = await regenerateShareTokenRecord(user.email, clientId);
+    const client = await regenerateShareTokenRecord(user.email, id);
 
     return NextResponse.json({ shareToken: client.shareToken });
   } catch (error: any) {

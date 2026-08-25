@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       orderBy: { displayName: "asc" },
     });
 
-    const formatted = locations.map((loc) => ({
+    const formatted = locations.map((loc: any) => ({
       id: loc.id,
       locationName: loc.locationName,
       displayName: loc.displayName,
@@ -31,10 +31,10 @@ export async function GET(req: NextRequest) {
       primaryCategory: loc.primaryCategory,
       syncStatus: loc.syncStatus,
       syncError: loc.syncError,
-      lastSyncTime: loc.lastSyncTime?.toISOString() || null,
-      clientId: loc.property.client.id,
-      clientName: loc.property.client.name,
-      domain: loc.property.domain,
+      lastSyncTime: loc.lastSyncTime?.toISOString?.() || null,
+      clientId: loc.property?.client?.id || null,
+      clientName: loc.property?.client?.name || "Client",
+      domain: loc.property?.domain || "Domain",
     }));
 
     return NextResponse.json({ locations: formatted });

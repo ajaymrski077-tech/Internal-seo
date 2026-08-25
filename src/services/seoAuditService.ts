@@ -34,8 +34,8 @@ export interface AuditConfig {
 }
 
 export interface AuditSummary {
-  id: number;
-  propertyId: number;
+  id: string | number;
+  propertyId: string | number;
   status: string;
   score: number | null;
   pagesDiscovered: number;
@@ -54,7 +54,7 @@ export interface AuditSummary {
 }
 
 // Track running audits for cancellation
-const runningAudits = new Map<number, { cancelled: boolean }>();
+const runningAudits = new Map<string | number, { cancelled: boolean }>();
 
 // ─── Clamp config to safe limits ────────────────────────────────────
 
@@ -72,9 +72,9 @@ function clampConfig(userConfig: AuditConfig): CrawlConfig {
 // ─── Create Audit ──────────────────────────────────────────────────
 
 export async function createAudit(
-  propertyId: number,
+  propertyId: string | number,
   userConfig: AuditConfig = {}
-): Promise<number> {
+): Promise<string | number> {
   const config = clampConfig(userConfig);
 
   const audit = await prisma.seoAudit.create({
@@ -96,8 +96,8 @@ export async function createAudit(
 // ─── Background Execution ──────────────────────────────────────────
 
 async function runAuditInBackground(
-  auditId: number,
-  propertyId: number,
+  auditId: string | number,
+  propertyId: string | number,
   config: CrawlConfig
 ): Promise<void> {
   const tracker = { cancelled: false };
@@ -344,7 +344,7 @@ async function runAuditInBackground(
 
 // ─── Cancel Audit ──────────────────────────────────────────────────
 
-export async function cancelAudit(auditId: number): Promise<boolean> {
+export async function cancelAudit(auditId: string | number): Promise<boolean> {
   const tracker = runningAudits.get(auditId);
   if (tracker) {
     tracker.cancelled = true;
@@ -362,8 +362,8 @@ export async function cancelAudit(auditId: number): Promise<boolean> {
 // ─── Get Audits ────────────────────────────────────────────────────
 
 export async function getAudits(filters: {
-  propertyId?: number;
-  clientId?: number;
+  propertyId?: string | number;
+  clientId?: string | number;
   status?: string;
 }): Promise<AuditSummary[]> {
   const where: any = {};
@@ -393,7 +393,7 @@ export async function getAudits(filters: {
     take: 50,
   });
 
-  return audits.map((a) => ({
+  return audits.map((a: any) => ({
     id: a.id,
     propertyId: a.propertyId,
     status: a.status,
@@ -407,16 +407,16 @@ export async function getAudits(filters: {
     issuesInfo: a.issuesInfo,
     startTime: a.startTime?.toISOString() || null,
     endTime: a.endTime?.toISOString() || null,
-    createdAt: a.createdAt.toISOString(),
-    domain: a.property.domain,
-    clientName: a.property.client.name,
+    createdAt: a.createdAt?.toISOString?.() || new Date(a.createdAt).toISOString(),
+    domain: a.property?.domain || "Domain",
+    clientName: a.property?.client?.name || "Client",
     errorMessage: a.errorMessage,
   }));
 }
 
 // ─── Get Single Audit ──────────────────────────────────────────────
 
-export async function getAuditById(auditId: number): Promise<AuditSummary | null> {
+export async function getAuditById(auditId: string | number): Promise<AuditSummary | null> {
   const a = await prisma.seoAudit.findUnique({
     where: { id: auditId },
     include: {
@@ -454,7 +454,7 @@ export async function getAuditById(auditId: number): Promise<AuditSummary | null
 // ─── Get Audit Pages ───────────────────────────────────────────────
 
 export async function getAuditPages(
-  auditId: number,
+  auditId: string | number,
   options: { page?: number; limit?: number; search?: string; status?: string }
 ) {
   const take = Math.min(options.limit || 50, 100);
@@ -490,7 +490,7 @@ export async function getAuditPages(
   ]);
 
   return {
-    pages: pages.map((p) => ({
+    pages: pages.map((p: any) => ({
       id: p.id,
       url: p.url,
       statusCode: p.statusCode,
@@ -510,7 +510,7 @@ export async function getAuditPages(
       internalLinks: p.internalLinks,
       externalLinks: p.externalLinks,
       depth: p.depth,
-      issueCount: p._count.issues,
+      issueCount: p._count?.issues || 0,
     })),
     total,
     page: options.page || 1,
@@ -521,7 +521,7 @@ export async function getAuditPages(
 // ─── Get Audit Issues ──────────────────────────────────────────────
 
 export async function getAuditIssues(
-  auditId: number,
+  auditId: string | number,
   options: { severity?: string; type?: string; page?: number; limit?: number }
 ) {
   const take = Math.min(options.limit || 50, 100);
@@ -548,7 +548,7 @@ export async function getAuditIssues(
   ]);
 
   return {
-    issues: issues.map((i) => ({
+    issues: issues.map((i: any) => ({
       id: i.id,
       type: i.type,
       severity: i.severity,
@@ -566,7 +566,7 @@ export async function getAuditIssues(
 
 // ─── Delete Audit ──────────────────────────────────────────────────
 
-export async function deleteAudit(auditId: number): Promise<void> {
+export async function deleteAudit(auditId: string | number): Promise<void> {
   // Cancel if running
   const tracker = runningAudits.get(auditId);
   if (tracker) tracker.cancelled = true;
@@ -576,7 +576,7 @@ export async function deleteAudit(auditId: number): Promise<void> {
 
 // ─── Get latest audit for a property ───────────────────────────────
 
-export async function getLatestAuditForProperty(propertyId: number): Promise<AuditSummary | null> {
+export async function getLatestAuditForProperty(propertyId: string | number): Promise<AuditSummary | null> {
   const a = await prisma.seoAudit.findFirst({
     where: { propertyId },
     include: {
@@ -603,9 +603,9 @@ export async function getLatestAuditForProperty(propertyId: number): Promise<Aud
     issuesInfo: a.issuesInfo,
     startTime: a.startTime?.toISOString() || null,
     endTime: a.endTime?.toISOString() || null,
-    createdAt: a.createdAt.toISOString(),
-    domain: a.property.domain,
-    clientName: a.property.client.name,
+    createdAt: a.createdAt?.toISOString?.() || new Date(a.createdAt).toISOString(),
+    domain: a.property?.domain || "Domain",
+    clientName: a.property?.client?.name || "Client",
     errorMessage: a.errorMessage,
   };
 }

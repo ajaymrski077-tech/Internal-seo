@@ -14,13 +14,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const ticketId = parseInt(id, 10);
-    if (isNaN(ticketId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid ticket ID" }, { status: 400 });
     }
 
     const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
+      where: { id },
       include: {
         client: { select: { name: true } }
       }
@@ -48,8 +47,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const ticketId = parseInt(id, 10);
-    if (isNaN(ticketId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid ticket ID" }, { status: 400 });
     }
 
@@ -58,14 +56,14 @@ export async function PATCH(
 
     const data: any = {};
     if (subject !== undefined) data.subject = subject.trim();
-    if (clientId !== undefined) data.clientId = parseInt(clientId, 10);
+    if (clientId !== undefined) data.clientId = clientId ? clientId.toString() : undefined;
     if (fromName !== undefined) data.fromName = fromName.trim();
     if (status !== undefined) data.status = status;
     if (priority !== undefined) data.priority = priority;
     if (assignedTo !== undefined) data.assignedTo = assignedTo || "—";
 
     const ticket = await prisma.ticket.update({
-      where: { id: ticketId },
+      where: { id },
       data,
       include: {
         client: { select: { name: true } }
@@ -91,13 +89,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const ticketId = parseInt(id, 10);
-    if (isNaN(ticketId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid ticket ID" }, { status: 400 });
     }
 
     await prisma.ticket.delete({
-      where: { id: ticketId },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

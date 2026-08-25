@@ -12,11 +12,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const clientIdStr = searchParams.get("clientId");
-    const clientId = clientIdStr ? parseInt(clientIdStr, 10) : undefined;
-
-    if (clientIdStr && isNaN(clientId!)) {
-      return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
-    }
+    const clientId = clientIdStr && clientIdStr !== "All" ? clientIdStr : undefined;
 
     const overview = await getPrOverview(clientId);
     return NextResponse.json(overview);

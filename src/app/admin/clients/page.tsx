@@ -44,8 +44,8 @@ export default function ClientsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<string | number | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | number | null>(null);
 
   // Close menus on outer click
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function ClientsPage() {
   // Modal Open states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
-  const [activeClientId, setActiveClientId] = useState<number | null>(null);
+  const [activeClientId, setActiveClientId] = useState<string | number | null>(null);
 
   // Form Fields
   const [formName, setFormName] = useState("");
@@ -126,7 +126,7 @@ export default function ClientsPage() {
   };
 
   // Clipboard copy handler for secure share links
-  const handleCopyLink = async (clientId: number, token: string | null) => {
+  const handleCopyLink = async (clientId: string | number, token: string | null) => {
     if (!token) {
       toastError("No share link available. Edit client to generate token.");
       return;
@@ -145,7 +145,7 @@ export default function ClientsPage() {
   };
 
   // Share Token Regeneration handler
-  const handleRegenerateToken = async (clientId: number) => {
+  const handleRegenerateToken = async (clientId: string | number) => {
     const isConfirmed = await confirm({
       title: "Regenerate Share Link",
       message: "Are you sure you want to invalidate the existing share link and create a new one? The old link will stop working.",
@@ -261,7 +261,7 @@ export default function ClientsPage() {
   };
 
   // Archiving/Soft-Deleting handler
-  const handleArchiveClient = async (clientId: number, name: string) => {
+  const handleArchiveClient = async (clientId: string | number, name: string) => {
     const isConfirmed = await confirm({
       title: "Archive Client",
       message: `Are you sure you want to archive '${name}'? This client will disappear from default metrics, dashboard charts, and portfolios, but historical analytics data will remain intact.`,
@@ -290,7 +290,7 @@ export default function ClientsPage() {
   };
 
   // Restoring client handler
-  const handleRestoreClient = async (clientId: number) => {
+  const handleRestoreClient = async (clientId: string | number) => {
     try {
       const res = await fetch(`/api/clients/${clientId}`, {
         method: "PATCH",

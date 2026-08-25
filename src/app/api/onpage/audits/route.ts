@@ -13,12 +13,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const propertyIdStr = searchParams.get("propertyId");
-    const propertyId = propertyIdStr ? parseInt(propertyIdStr, 10) : undefined;
+    const propertyId = propertyIdStr && propertyIdStr !== "All" ? propertyIdStr : undefined;
     const status = searchParams.get("status") || undefined;
-
-    if (propertyIdStr && isNaN(propertyId!)) {
-      return NextResponse.json({ error: "Invalid property ID" }, { status: 400 });
-    }
 
     const audits = await getAudits({ propertyId, status });
     return NextResponse.json({ audits });
@@ -44,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     const property = await prisma.websiteProperty.findUnique({
-      where: { id: parseInt(propertyId, 10) }
+      where: { id: propertyId }
     });
 
     if (!property) {

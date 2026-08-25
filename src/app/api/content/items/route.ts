@@ -11,14 +11,12 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const propertyIdStr = searchParams.get("propertyId");
+    const propertyId = searchParams.get("propertyId");
     const status = searchParams.get("status"); // Filter status e.g. "IDEA", "PUBLISHED"
 
-    if (!propertyIdStr || isNaN(parseInt(propertyIdStr, 10))) {
+    if (!propertyId || propertyId.trim() === "") {
       return NextResponse.json({ error: "Invalid property ID" }, { status: 400 });
     }
-
-    const propertyId = parseInt(propertyIdStr, 10);
 
     const items = await prisma.contentItem.findMany({
       where: {
@@ -48,13 +46,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { propertyId, title, targetKeyword, searchIntent, contentType, priority, source, status } = body;
 
-    if (!propertyId || isNaN(parseInt(propertyId, 10)) || !title || !targetKeyword) {
+    if (!propertyId || !title || !targetKeyword) {
       return NextResponse.json({ error: "Missing required properties" }, { status: 400 });
     }
 
     const item = await prisma.contentItem.create({
       data: {
-        propertyId: parseInt(propertyId, 10),
+        propertyId: propertyId.toString(),
         title,
         targetKeyword,
         searchIntent: searchIntent || null,
@@ -67,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     // Log action
     const prop = await prisma.websiteProperty.findUnique({
-      where: { id: parseInt(propertyId, 10) },
+      where: { id: propertyId.toString() },
       include: { client: true }
     });
 

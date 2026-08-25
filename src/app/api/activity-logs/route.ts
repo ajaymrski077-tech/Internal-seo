@@ -15,11 +15,8 @@ export async function GET(req: NextRequest) {
     const limitStr = searchParams.get("limit");
 
     const whereClause: any = {};
-    if (clientIdStr) {
-      const clientId = parseInt(clientIdStr, 10);
-      if (!isNaN(clientId)) {
-        whereClause.clientId = clientId;
-      }
+    if (clientIdStr && clientIdStr !== "ALL") {
+      whereClause.clientId = clientIdStr;
     }
 
     const take = limitStr ? Math.min(parseInt(limitStr, 10) || 20, 50) : 20;

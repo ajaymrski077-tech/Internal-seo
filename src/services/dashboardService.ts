@@ -4,7 +4,7 @@ import { getClientDeliveries, DeliveryDetail } from "./deliveryService";
 import { getRankingsOverview } from "./rankingsService";
 
 export interface ClientDashboardCard {
-  id: number;
+  id: string | number;
   name: string;
   companyName: string | null;
   domain: string;
@@ -109,8 +109,8 @@ export const getDashboardData = async (
     },
   });
 
-  const clientIds = dbClients.map((c) => c.id);
-  const propertyIds = dbClients.flatMap((c) => c.properties.map((p) => p.id));
+  const clientIds = dbClients.map((c: any) => c.id);
+  const propertyIds = dbClients.flatMap((c: any) => (c.properties || []).map((p: any) => p.id));
   const prevDates = getPreviousPeriodDates(start, end);
 
   // Bulk query all deliveries for matching clients
@@ -146,7 +146,7 @@ export const getDashboardData = async (
   }) : [];
 
   // Group deliveries in memory by client ID
-  const deliveriesByClient: Record<number, DeliveryDetail[]> = {};
+  const deliveriesByClient: Record<string, DeliveryDetail[]> = {};
   for (const d of allDeliveries) {
     if (!deliveriesByClient[d.clientId]) {
       deliveriesByClient[d.clientId] = [];
@@ -175,7 +175,7 @@ export const getDashboardData = async (
   }
 
   // Group snapshots in memory by property ID
-  const currentSnapsByProperty: Record<number, typeof currentSnapshots> = {};
+  const currentSnapsByProperty: Record<string, typeof currentSnapshots> = {};
   for (const s of currentSnapshots) {
     if (!currentSnapsByProperty[s.propertyId]) {
       currentSnapsByProperty[s.propertyId] = [];
@@ -183,7 +183,7 @@ export const getDashboardData = async (
     currentSnapsByProperty[s.propertyId].push(s);
   }
 
-  const previousSnapsByProperty: Record<number, typeof previousSnapshots> = {};
+  const previousSnapsByProperty: Record<string, typeof previousSnapshots> = {};
   for (const s of previousSnapshots) {
     if (!previousSnapsByProperty[s.propertyId]) {
       previousSnapsByProperty[s.propertyId] = [];
@@ -202,11 +202,11 @@ export const getDashboardData = async (
 
   // 3. Populate metrics and histories in memory
   for (const client of dbClients) {
-    const primaryProperty = client.properties[0];
+    const primaryProperty = client.properties?.[0];
     
     const initials = client.name
       .split(" ")
-      .map((n) => n[0])
+      .map((n: any) => n[0])
       .join("")
       .slice(0, 2)
       .toUpperCase();
@@ -235,8 +235,8 @@ export const getDashboardData = async (
       continue;
     }
 
-    const ga4Conn = primaryProperty.connections.find((c) => c.provider === "GA4");
-    const gscConn = primaryProperty.connections.find((c) => c.provider === "GSC");
+    const ga4Conn = primaryProperty.connections?.find((c: any) => c.provider === "GA4");
+    const gscConn = primaryProperty.connections?.find((c: any) => c.provider === "GSC");
 
     const ga4Status = ga4Conn ? ga4Conn.status : "DISCONNECTED";
     const gscStatus = gscConn ? gscConn.status : "DISCONNECTED";
@@ -555,7 +555,7 @@ export const getClientDashboardByShareToken = async (
 
 
 export const getClientWorkspaceData = async (
-  clientId: number,
+  clientId: string | number,
   range: string = "30d"
 ): Promise<any | null> => {
   const { start, end } = parseRangeCode(range);

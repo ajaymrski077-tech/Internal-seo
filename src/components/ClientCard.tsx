@@ -18,8 +18,8 @@ import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, Tooltip, Dot } f
 
 interface ClientCardProps {
   client: ClientDashboardCard;
-  onEdit: (id: number) => void;
-  onView: (id: number) => void;
+  onEdit: (id: string | number) => void;
+  onView: (id: string | number) => void;
 }
 
 export default function ClientCard({ client, onEdit, onView }: ClientCardProps) {

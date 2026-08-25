@@ -14,12 +14,11 @@ export async function GET(
     }
 
     const { id } = await params;
-    const auditId = parseInt(id, 10);
-    if (isNaN(auditId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid audit ID" }, { status: 400 });
     }
 
-    const audit = await getAuditById(auditId);
+    const audit = await getAuditById(id);
     if (!audit) {
       return NextResponse.json({ error: "SEO audit not found" }, { status: 404 });
     }
@@ -30,7 +29,7 @@ export async function GET(
     const severity = searchParams.get("severity") || undefined;
     const type = searchParams.get("type") || undefined;
 
-    const data = await getAuditIssues(auditId, { page, limit, severity, type });
+    const data = await getAuditIssues(id, { page, limit, severity, type });
     return NextResponse.json(data);
   } catch (error: any) {
     console.error("SEO Audit issues load error:", error);

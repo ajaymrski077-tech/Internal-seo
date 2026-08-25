@@ -14,13 +14,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || undefined;
     const clientIdStr = searchParams.get("clientId");
-    const clientId = clientIdStr ? parseInt(clientIdStr, 10) : undefined;
+    const clientId = clientIdStr && clientIdStr !== "All" ? clientIdStr : undefined;
     const status = searchParams.get("status") || undefined;
     const priority = searchParams.get("priority") || undefined;
-
-    if (clientIdStr && isNaN(clientId!)) {
-      return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
-    }
 
     const campaigns = await getCampaigns({ search, clientId, status, priority });
     return NextResponse.json({ campaigns });
@@ -50,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     const client = await prisma.client.findUnique({
-      where: { id: parseInt(clientId, 10) }
+      where: { id: clientId }
     });
 
     if (!client) {
@@ -60,7 +56,7 @@ export async function POST(req: NextRequest) {
     const campaign = await prisma.prCampaign.create({
       data: {
         campaignName: campaignName.trim(),
-        clientId: parseInt(clientId, 10),
+        clientId: clientId.toString(),
         description: description || null,
         objective: objective || null,
         status: status || "DRAFT",

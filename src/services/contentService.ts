@@ -56,7 +56,7 @@ export function isValidTransition(currentStatus: string, newStatus: string): boo
 // ─── Content Service Functions ─────────────────────────────────────
 
 export async function transitionContentStatus(
-  itemId: number,
+  itemId: string | number,
   newStatus: string,
   actorEmail: string
 ): Promise<any> {
@@ -82,8 +82,8 @@ export async function transitionContentStatus(
     data: {
       actorEmail,
       action: "CONTENT_STATUS_TRANSITION",
-      clientId: item.property.clientId,
-      clientName: item.property.client.name,
+      clientId: item.property?.clientId,
+      clientName: item.property?.client?.name || "Client",
       metadata: JSON.stringify({
         itemId,
         title: item.title,
@@ -98,7 +98,7 @@ export async function transitionContentStatus(
 
 // ─── Opportunity Scanners ──────────────────────────────────────────
 
-export async function scanContentOpportunities(propertyId: number): Promise<ContentOpportunity[]> {
+export async function scanContentOpportunities(propertyId: string | number): Promise<ContentOpportunity[]> {
   const opportunities: ContentOpportunity[] = [];
 
   // 1. Scan Search Console / Rankings for Striking Distance queries

@@ -15,13 +15,12 @@ export async function POST(
     }
 
     const { id } = await params;
-    const locationId = parseInt(id, 10);
-    if (isNaN(locationId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid location ID" }, { status: 400 });
     }
 
     const loc = await prisma.gbpLocation.findUnique({
-      where: { id: locationId }
+      where: { id }
     });
 
     if (!loc) {
@@ -29,11 +28,11 @@ export async function POST(
     }
 
     // Await sync execution
-    await syncGbpData(locationId, 30);
+    await syncGbpData(id, 30);
 
     // Refresh loc object from DB for fresh status
     const updatedLoc = await prisma.gbpLocation.findUnique({
-      where: { id: locationId }
+      where: { id }
     });
 
     return NextResponse.json({

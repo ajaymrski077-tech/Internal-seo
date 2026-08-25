@@ -16,13 +16,12 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const backlinkId = parseInt(id, 10);
-    if (isNaN(backlinkId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid backlink ID" }, { status: 400 });
     }
 
     const backlink = await prisma.acquiredBacklink.findUnique({
-      where: { id: backlinkId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -46,7 +45,7 @@ export async function PATCH(
     if (acquiredDate !== undefined) data.acquiredDate = acquiredDate ? new Date(acquiredDate) : new Date();
 
     const updated = await prisma.acquiredBacklink.update({
-      where: { id: backlinkId },
+      where: { id },
       data,
     });
 
@@ -79,13 +78,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const backlinkId = parseInt(id, 10);
-    if (isNaN(backlinkId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid backlink ID" }, { status: 400 });
     }
 
     const backlink = await prisma.acquiredBacklink.findUnique({
-      where: { id: backlinkId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -96,7 +94,7 @@ export async function DELETE(
     }
 
     await prisma.acquiredBacklink.delete({
-      where: { id: backlinkId },
+      where: { id },
     });
 
     // Log Activity

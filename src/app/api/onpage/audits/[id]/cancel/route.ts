@@ -14,17 +14,16 @@ export async function POST(
     }
 
     const { id } = await params;
-    const auditId = parseInt(id, 10);
-    if (isNaN(auditId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid audit ID" }, { status: 400 });
     }
 
-    const audit = await getAuditById(auditId);
+    const audit = await getAuditById(id);
     if (!audit) {
       return NextResponse.json({ error: "SEO audit not found" }, { status: 404 });
     }
 
-    await cancelAudit(auditId);
+    await cancelAudit(id);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error("SEO Audit cancel error:", error);

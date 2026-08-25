@@ -13,14 +13,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const { id } = await params;
-    const clientId = parseInt(id, 10);
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid-id") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
     // 2. Fetch the primary property for the client
     const client = await prisma.client.findUnique({
-      where: { id: clientId },
+      where: { id },
       include: {
         properties: true
       }

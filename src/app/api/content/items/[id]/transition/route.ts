@@ -16,8 +16,7 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const itemId = parseInt(id, 10);
-    if (isNaN(itemId)) {
+    if (!id || id.trim() === "") {
       return NextResponse.json({ error: "Invalid item ID" }, { status: 400 });
     }
 
@@ -29,12 +28,12 @@ export async function POST(
     }
 
     // Call service layer for transition validation and save
-    const updated = await transitionContentStatus(itemId, newStatus, user.email);
+    const updated = await transitionContentStatus(id, newStatus, user.email);
 
     // If publishing, save live publication details
     if (newStatus === "PUBLISHED") {
       await prisma.contentItem.update({
-        where: { id: itemId },
+        where: { id },
         data: {
           ...(liveUrl && { liveUrl }),
           ...(publishDate && { publishDate: new Date(publishDate) }),

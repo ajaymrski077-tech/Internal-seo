@@ -44,3 +44,20 @@ next-env.d.ts
 scratch/
 *.db
 *.db-*
+*.sqlite
+*.sqlite3
+
+# IDEs and AI tools
+.claude/
+.windsurf/
+.idea/
+.vscode/
+CLAUDE.md
+
+# Scratch & one-off root scripts
+check-*.js
+reconnect-*.js
+restore-*.js
+wipe-*.js
+scratch-*.*
+seed-tickets.ts

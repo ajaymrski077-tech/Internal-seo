@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     // 4. Update database
     const property = await prisma.websiteProperty.findFirst({
-      where: { clientId: parseInt(clientId, 10) },
+      where: { clientId: clientId.toString() },
     });
 
     if (!property) {
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     }
 
     const clientRecord = await prisma.client.findUnique({
-      where: { id: parseInt(clientId, 10) }
+      where: { id: clientId.toString() }
     });
 
     if (!clientRecord) {

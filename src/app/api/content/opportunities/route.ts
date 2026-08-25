@@ -11,13 +11,12 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const propertyIdStr = searchParams.get("propertyId");
+    const propertyId = searchParams.get("propertyId");
 
-    if (!propertyIdStr || isNaN(parseInt(propertyIdStr, 10))) {
+    if (!propertyId || propertyId.trim() === "") {
       return NextResponse.json({ error: "Invalid property ID" }, { status: 400 });
     }
 
-    const propertyId = parseInt(propertyIdStr, 10);
     const opportunities = await scanContentOpportunities(propertyId);
 
     return NextResponse.json({ opportunities });

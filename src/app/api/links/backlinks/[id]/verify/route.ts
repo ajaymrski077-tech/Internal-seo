@@ -16,13 +16,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const backlinkId = parseInt(id, 10);
-    if (isNaN(backlinkId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid backlink ID" }, { status: 400 });
     }
 
     const backlink = await prisma.acquiredBacklink.findUnique({
-      where: { id: backlinkId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -32,7 +31,7 @@ export async function POST(
       return NextResponse.json({ error: "Backlink not found" }, { status: 404 });
     }
 
-    const result = await verifyAcquiredBacklink(backlinkId);
+    const result = await verifyAcquiredBacklink(id);
 
     // Log Activity
     if (result.status === "LIVE") {

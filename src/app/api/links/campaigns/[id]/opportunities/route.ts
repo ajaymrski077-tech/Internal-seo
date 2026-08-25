@@ -15,13 +15,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const opportunities = await prisma.linkOpportunity.findMany({
-      where: { campaignId },
+      where: { campaignId: id },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -45,13 +44,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const campaignId = parseInt(id, 10);
-    if (isNaN(campaignId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid campaign ID" }, { status: 400 });
     }
 
     const campaign = await prisma.linkCampaign.findUnique({
-      where: { id: campaignId },
+      where: { id },
       include: { client: true }
     });
 
@@ -74,7 +72,7 @@ export async function POST(
 
     const opportunity = await prisma.linkOpportunity.create({
       data: {
-        campaignId,
+        campaignId: id,
         domain: domain.trim().toLowerCase(),
         websiteName: websiteName.trim(),
         websiteUrl: websiteUrl.trim(),
@@ -99,7 +97,7 @@ export async function POST(
       "LINK_OPPORTUNITY_CREATED",
       campaign.clientId,
       campaign.client.name,
-      { campaignId, campaignName: campaign.name, opportunityId: opportunity.id, websiteName: opportunity.websiteName }
+      { campaignId: id, campaignName: campaign.name, opportunityId: opportunity.id, websiteName: opportunity.websiteName }
     );
 
     return NextResponse.json(opportunity, { status: 201 });

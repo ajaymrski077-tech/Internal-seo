@@ -11,19 +11,15 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const propertyIdStr = searchParams.get("propertyId");
+    const propertyId = searchParams.get("propertyId");
 
-    if (!propertyIdStr || isNaN(parseInt(propertyIdStr, 10))) {
+    if (!propertyId || propertyId.trim() === "") {
       return NextResponse.json({ error: "Invalid property ID" }, { status: 400 });
     }
 
-    const propertyId = parseInt(propertyIdStr, 10);
-
-    // Fetch counts grouped by status
-    const statusCounts = await prisma.contentItem.groupBy({
-      by: ["status"],
-      where: { propertyId },
-      _count: { id: true }
+    // Fetch all items for this property to compute counts
+    const allItems = await prisma.contentItem.findMany({
+      where: { propertyId }
     });
 
     const counts: Record<string, number> = {
@@ -38,8 +34,10 @@ export async function GET(req: NextRequest) {
       PUBLISHED: 0
     };
 
-    statusCounts.forEach((group) => {
-      counts[group.status] = group._count.id;
+    allItems.forEach((item: any) => {
+      if (item.status && counts[item.status] !== undefined) {
+        counts[item.status]++;
+      }
     });
 
     // Fetch upcoming content (scheduled or planned)

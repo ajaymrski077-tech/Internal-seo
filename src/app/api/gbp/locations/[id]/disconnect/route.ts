@@ -15,13 +15,12 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const locationId = parseInt(id, 10);
-    if (isNaN(locationId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid location ID" }, { status: 400 });
     }
 
     const loc = await prisma.gbpLocation.findUnique({
-      where: { id: locationId },
+      where: { id },
       include: {
         property: {
           include: { client: { select: { id: true, name: true } } },
@@ -35,21 +34,22 @@ export async function POST(
 
     // Delete location mappings (cascade deletes snapshots automatically)
     await prisma.$transaction(async (tx) => {
-      await tx.gbpLocation.delete({ where: { id: locationId } });
+      const dbTx = tx as any;
+      await dbTx.gbpLocation.delete({ where: { id } });
 
       // Clean GbpConnection externalId
-      await tx.integrationConnection.updateMany({
+      await dbTx.integrationConnection.updateMany({
         where: { propertyId: loc.propertyId, provider: "GBP" },
         data: { externalId: null }
       });
 
       // Log activity
-      await tx.activityLog.create({
+      await dbTx.activityLog.create({
         data: {
           actorEmail: user.email,
           action: "GBP_LOCATION_DISCONNECTED",
-          clientId: loc.property.client.id,
-          clientName: loc.property.client.name,
+          clientId: loc.property?.client?.id || null,
+          clientName: loc.property?.client?.name || "Client",
           metadata: JSON.stringify({ displayName: loc.displayName }),
         },
       });

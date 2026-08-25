@@ -8,8 +8,8 @@ import { getRankingsOverview } from "./rankingsService";
 const db = prisma as any;
 
 export interface ReportConfigInput {
-  clientId: number;
-  propertyId: number | null;
+  clientId: string | number;
+  propertyId: string | number | null;
   name: string;
   dateRange: string;
   startDate?: Date;
@@ -21,13 +21,13 @@ export interface ReportConfigInput {
 // 1. Get filtered, sorted, paginated reports list
 export const getReportsList = async (params: {
   search?: string;
-  clientId?: number;
+  clientId?: string | number;
   status?: string;
   isArchived?: boolean;
   sort?: string;
   page?: number;
   pageSize?: number;
-}) => {
+} = {}) => {
   const {
     search = "",
     clientId,
@@ -45,7 +45,7 @@ export const getReportsList = async (params: {
     isArchived,
   };
 
-  if (clientId && !isNaN(clientId)) {
+  if (clientId && clientId !== "ALL") {
     whereClause.clientId = clientId;
   }
 
@@ -160,7 +160,7 @@ export const createReport = async (input: ReportConfigInput, actorEmail: string)
 };
 
 // 3. Generate snapshot (immutable data record)
-export const generateReportSnapshot = async (reportId: number, actorEmail: string) => {
+export const generateReportSnapshot = async (reportId: string | number, actorEmail: string) => {
   // 1. Fetch report details
   const report = await db.report.findUnique({
     where: { id: reportId },
@@ -202,8 +202,8 @@ export const generateReportSnapshot = async (reportId: number, actorEmail: strin
       },
     });
 
-    const ga4Conn = primaryProperty?.connections.find(c => c.provider === "GA4");
-    const gscConn = primaryProperty?.connections.find(c => c.provider === "GSC");
+    const ga4Conn = primaryProperty?.connections.find((c: any) => c.provider === "GA4");
+    const gscConn = primaryProperty?.connections.find((c: any) => c.provider === "GSC");
 
     const hasGA4 = ga4Conn?.status === "CONNECTED" || ga4Conn?.status === "SYNC_ERROR";
     const hasGSC = gscConn?.status === "CONNECTED" || gscConn?.status === "SYNC_ERROR";
@@ -327,7 +327,7 @@ export const generateReportSnapshot = async (reportId: number, actorEmail: strin
 
 // 4. Update configuration
 export const updateReportConfig = async (
-  reportId: number,
+  reportId: string | number,
   input: Partial<ReportConfigInput>,
   actorEmail: string
 ) => {
@@ -369,7 +369,7 @@ export const updateReportConfig = async (
         actorEmail,
         action: "REPORT_UPDATED",
         clientId: existing.clientId,
-        clientName: existing.client.name,
+        clientName: existing.client?.name || "Client",
         metadata: JSON.stringify({ reportId, changes: Object.keys(input) }),
       },
     });
@@ -381,7 +381,7 @@ export const updateReportConfig = async (
 };
 
 // 5. Get report with its latest snapshot details
-export const getReportDetails = async (reportId: number) => {
+export const getReportDetails = async (reportId: string | number) => {
   const report = await db.report.findUnique({
     where: { id: reportId },
     include: {
@@ -402,7 +402,7 @@ export const getReportDetails = async (reportId: number) => {
 };
 
 // 6. Archive/soft-delete report
-export const archiveReport = async (reportId: number, actorEmail: string) => {
+export const archiveReport = async (reportId: string | number, actorEmail: string) => {
   const report = await db.report.findUnique({
     where: { id: reportId },
     include: { client: true },
@@ -422,7 +422,7 @@ export const archiveReport = async (reportId: number, actorEmail: string) => {
         actorEmail,
         action: "REPORT_ARCHIVED",
         clientId: report.clientId,
-        clientName: report.client.name,
+        clientName: report.client?.name || "Client",
         metadata: JSON.stringify({ reportId }),
       },
     });
@@ -432,7 +432,7 @@ export const archiveReport = async (reportId: number, actorEmail: string) => {
 };
 
 // 7. Restore archived report
-export const restoreReport = async (reportId: number, actorEmail: string) => {
+export const restoreReport = async (reportId: string | number, actorEmail: string) => {
   const report = await db.report.findUnique({
     where: { id: reportId },
     include: { client: true },
@@ -452,7 +452,7 @@ export const restoreReport = async (reportId: number, actorEmail: string) => {
         actorEmail,
         action: "REPORT_RESTORED",
         clientId: report.clientId,
-        clientName: report.client.name,
+        clientName: report.client?.name || "Client",
         metadata: JSON.stringify({ reportId }),
       },
     });
@@ -462,7 +462,7 @@ export const restoreReport = async (reportId: number, actorEmail: string) => {
 };
 
 // 8. Regenerate share token
-export const regenerateReportShareToken = async (reportId: number, actorEmail: string) => {
+export const regenerateReportShareToken = async (reportId: string | number, actorEmail: string) => {
   const report = await db.report.findUnique({
     where: { id: reportId },
     include: { client: true },
@@ -482,7 +482,7 @@ export const regenerateReportShareToken = async (reportId: number, actorEmail: s
         actorEmail,
         action: "SHARE_LINK_REGENERATED",
         clientId: report.clientId,
-        clientName: report.client.name,
+        clientName: report.client?.name || "Client",
         metadata: JSON.stringify({ reportId, target: "REPORT" }),
       },
     });

@@ -19,8 +19,8 @@ export interface GbpLocationInfo {
 
 // ─── List Accounts ─────────────────────────────────────────────────
 
-export async function listGbpAccounts(connectionId: number): Promise<GbpAccount[]> {
-  const { accessToken } = await getDecryptedCredentials(connectionId);
+export async function listGbpAccounts(connectionId: string | number): Promise<GbpAccount[]> {
+  const { accessToken } = await getDecryptedCredentials(connectionId as any);
   if (!accessToken) throw new Error("No Google access token available.");
 
   const response = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
@@ -48,10 +48,10 @@ export async function listGbpAccounts(connectionId: number): Promise<GbpAccount[
 // ─── List Locations ────────────────────────────────────────────────
 
 export async function listGbpLocations(
-  connectionId: number,
+  connectionId: string | number,
   accountName: string
 ): Promise<GbpLocationInfo[]> {
-  const { accessToken } = await getDecryptedCredentials(connectionId);
+  const { accessToken } = await getDecryptedCredentials(connectionId as any);
   if (!accessToken) throw new Error("No Google access token available.");
 
   // Encode the accountName parameter to fit in the path (e.g. accounts/123)

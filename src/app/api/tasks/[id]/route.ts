@@ -14,13 +14,12 @@ export async function GET(
     }
 
     const { id } = await params;
-    const taskId = parseInt(id, 10);
-    if (isNaN(taskId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
     }
 
     const task = await prisma.task.findUnique({
-      where: { id: taskId },
+      where: { id },
       include: {
         client: { select: { name: true } }
       }
@@ -48,8 +47,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const taskId = parseInt(id, 10);
-    if (isNaN(taskId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
     }
 
@@ -62,13 +60,13 @@ export async function PATCH(
     if (status !== undefined) data.status = status.toUpperCase();
     if (priority !== undefined) data.priority = priority.toUpperCase();
     if (assignedTo !== undefined) data.assignedTo = assignedTo || null;
-    if (clientId !== undefined) data.clientId = clientId ? parseInt(clientId, 10) : null;
+    if (clientId !== undefined) data.clientId = clientId ? clientId.toString() : null;
     if (dueDate !== undefined) data.dueDate = dueDate ? new Date(dueDate) : null;
-    if (prCampaignId !== undefined) data.prCampaignId = prCampaignId ? parseInt(prCampaignId, 10) : null;
-    if (linkCampaignId !== undefined) data.linkCampaignId = linkCampaignId ? parseInt(linkCampaignId, 10) : null;
+    if (prCampaignId !== undefined) data.prCampaignId = prCampaignId ? prCampaignId.toString() : null;
+    if (linkCampaignId !== undefined) data.linkCampaignId = linkCampaignId ? linkCampaignId.toString() : null;
 
     const task = await prisma.task.update({
-      where: { id: taskId },
+      where: { id },
       data,
       include: {
         client: { select: { name: true } }
@@ -94,13 +92,12 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const taskId = parseInt(id, 10);
-    if (isNaN(taskId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
     }
 
     await prisma.task.delete({
-      where: { id: taskId },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

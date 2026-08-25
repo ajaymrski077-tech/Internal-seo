@@ -15,12 +15,11 @@ export async function POST(
     }
 
     const { id } = await params;
-    const reportId = parseInt(id, 10);
-    if (isNaN(reportId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid report ID" }, { status: 400 });
     }
 
-    const report = await regenerateReportShareToken(reportId, user.email);
+    const report = await regenerateReportShareToken(id, user.email);
     return NextResponse.json({ success: true, shareToken: report.shareToken });
   } catch (error: any) {
     console.error("Report share token regeneration API error:", error);

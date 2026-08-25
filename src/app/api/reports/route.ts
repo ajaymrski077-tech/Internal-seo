@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
 
-    const clientId = clientIdStr ? parseInt(clientIdStr, 10) : undefined;
+    const clientId = clientIdStr && clientIdStr !== "ALL" ? clientIdStr : undefined;
     const isArchived = archivedStr === "true";
 
     const payload = await getReportsList({
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
 
     // 1. Create Report config
     const report = await createReport({
-      clientId: parseInt(clientId, 10),
-      propertyId: propertyId ? parseInt(propertyId, 10) : null,
+      clientId: clientId.toString(),
+      propertyId: propertyId ? propertyId.toString() : null,
       name,
       dateRange,
       startDate: startDate ? new Date(startDate) : undefined,

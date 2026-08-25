@@ -43,19 +43,19 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
-    // Process updates in a transaction
-    const updatePromises = propertyUpdates.map((update: any) =>
-      prisma.websiteProperty.update({
-        where: { id: update.id },
-        data: {
-          clientId: update.clientId,
-          brandType: update.brandType,
-          brandKeywords: update.brandKeywords,
-        },
-      })
+    // Process updates in parallel
+    await Promise.all(
+      propertyUpdates.map((update: any) =>
+        prisma.websiteProperty.update({
+          where: { id: update.id },
+          data: {
+            clientId: update.clientId,
+            brandType: update.brandType,
+            brandKeywords: update.brandKeywords,
+          },
+        })
+      )
     );
-
-    await prisma.$transaction(updatePromises);
 
     return NextResponse.json({ message: "Settings updated successfully" });
   } catch (error: any) {

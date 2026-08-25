@@ -9,14 +9,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const clientId = parseInt(id, 10);
-
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid-id") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
     const client = await prisma.client.findUnique({
-      where: { id: clientId },
+      where: { id },
       include: {
         properties: {
           include: {
@@ -40,9 +38,9 @@ export async function GET(
     }
 
     // Sanitize connections to prevent token leakage
-    const sanitizedProperties = client.properties.map((p) => ({
+    const sanitizedProperties = client.properties.map((p: any) => ({
       ...p,
-      connections: p.connections.map((c) => {
+      connections: p.connections.map((c: any) => {
         const { accessToken, refreshToken, ...rest } = c;
         return rest;
       }),
@@ -70,9 +68,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const clientId = parseInt(id, 10);
-
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid-id") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
@@ -81,11 +77,11 @@ export async function PATCH(
 
     let client;
     if (isArchived === true) {
-      client = await archiveClientRecord(user.email, clientId);
+      client = await archiveClientRecord(user.email, id);
     } else if (isArchived === false && status === "ACTIVE") {
-      client = await restoreClientRecord(user.email, clientId);
+      client = await restoreClientRecord(user.email, id);
     } else {
-      client = await updateClientDetails(user.email, clientId, {
+      client = await updateClientDetails(user.email, id, {
         name,
         companyName,
         domain,

@@ -16,13 +16,12 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const oppId = parseInt(id, 10);
-    if (isNaN(oppId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid opportunity ID" }, { status: 400 });
     }
 
     const opportunity = await prisma.linkOpportunity.findUnique({
-      where: { id: oppId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -54,7 +53,7 @@ export async function PATCH(
     if (followUpDate !== undefined) data.followUpDate = followUpDate ? new Date(followUpDate) : null;
 
     const updated = await prisma.linkOpportunity.update({
-      where: { id: oppId },
+      where: { id },
       data,
     });
 
@@ -96,13 +95,12 @@ export async function DELETE(
 
   try {
     const { id } = await params;
-    const oppId = parseInt(id, 10);
-    if (isNaN(oppId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid opportunity ID" }, { status: 400 });
     }
 
     const opportunity = await prisma.linkOpportunity.findUnique({
-      where: { id: oppId },
+      where: { id },
       include: {
         campaign: { include: { client: true } }
       }
@@ -113,7 +111,7 @@ export async function DELETE(
     }
 
     await prisma.linkOpportunity.delete({
-      where: { id: oppId },
+      where: { id },
     });
 
     // Log Activity
@@ -124,6 +122,8 @@ export async function DELETE(
       opportunity.campaign.client.name,
       { campaignId: opportunity.campaignId, campaignName: opportunity.campaign.name, opportunityId: opportunity.id, websiteName: opportunity.websiteName }
     );
+
+    return NextResponse.json({ success: true });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
