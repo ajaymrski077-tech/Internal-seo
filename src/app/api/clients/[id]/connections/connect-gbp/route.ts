@@ -81,12 +81,12 @@ export async function POST(
     });
 
     // 3. Log activity
-    const clientRecord = await prisma.client.findUnique({ where: { id: clientId } });
+    const clientRecord = await prisma.client.findUnique({ where: { id } });
     await prisma.activityLog.create({
       data: {
         actorEmail: user.email,
         action: "GBP_LOCATION_CONNECTED",
-        clientId,
+        clientId: id,
         clientName: clientRecord?.name || "Unknown",
         metadata: JSON.stringify({ displayName, locationName }),
       },
