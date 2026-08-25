@@ -34,6 +34,13 @@ export const prCampaignCol = createModel("prCampaigns", async (item, include) =>
   if (include?.outreachRecords) item.outreachRecords = await prOutreachRecordCol.findMany({ where: { campaignId: item.id } });
   if (include?.placements) item.placements = await prPlacementCol.findMany({ where: { campaignId: item.id } });
   if (include?.tasks) item.tasks = await taskCol.findMany({ where: { prCampaignId: item.id } });
+  if (include?._count) {
+    item._count = {
+      outreachRecords: await prOutreachRecordCol.count({ where: { campaignId: item.id } }),
+      placements: await prPlacementCol.count({ where: { campaignId: item.id } }),
+      tasks: await taskCol.count({ where: { prCampaignId: item.id } }),
+    };
+  }
   return item;
 });
 export const linkOpportunityCol = createModel("linkOpportunities");
@@ -43,6 +50,13 @@ export const linkCampaignCol = createModel("linkCampaigns", async (item, include
   if (include?.opportunities) item.opportunities = await linkOpportunityCol.findMany({ where: { campaignId: item.id } });
   if (include?.acquiredLinks) item.acquiredLinks = await acquiredBacklinkCol.findMany({ where: { campaignId: item.id } });
   if (include?.tasks) item.tasks = await taskCol.findMany({ where: { linkCampaignId: item.id } });
+  if (include?._count) {
+    item._count = {
+      opportunities: await linkOpportunityCol.count({ where: { campaignId: item.id } }),
+      acquiredLinks: await acquiredBacklinkCol.count({ where: { campaignId: item.id } }),
+      tasks: await taskCol.count({ where: { linkCampaignId: item.id } }),
+    };
+  }
   return item;
 });
 export const keywordRankingSnapshotCol = createModel("keywordRankingSnapshots");

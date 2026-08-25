@@ -43,17 +43,36 @@ export const getPortfolioTotals = async (
 ): Promise<MetricDelta> => {
   const prevDates = getPreviousPeriodDates(startDate, endDate);
 
-  // Define client status filter relative to property's client
-  const propertyFilter = includeArchived ? {} : { client: { isArchived: false } };
+  const clients = await prisma.client.findMany({
+    where: includeArchived ? {} : { isArchived: false },
+    select: { id: true }
+  });
+  const clientIds = clients.map((c: any) => c.id);
+  const properties = await prisma.websiteProperty.findMany({
+    where: { clientId: { in: clientIds } },
+    select: { id: true }
+  });
+  const propertyIds = properties.map((p: any) => p.id);
+
+  if (propertyIds.length === 0) {
+    return {
+      sessions: 0,
+      organicTraffic: 0,
+      conversions: 0,
+      sessionsChange: 0,
+      organicTrafficChange: 0,
+      conversionsChange: 0,
+    };
+  }
 
   // Current period totals
   const currentAgg = await prisma.analyticsSnapshot.aggregate({
     where: {
+      propertyId: { in: propertyIds },
       date: {
         gte: startDate,
         lte: endDate,
       },
-      property: propertyFilter,
     },
     _sum: {
       sessions: true,
@@ -65,11 +84,11 @@ export const getPortfolioTotals = async (
   // Previous period totals
   const prevAgg = await prisma.analyticsSnapshot.aggregate({
     where: {
+      propertyId: { in: propertyIds },
       date: {
         gte: prevDates.start,
         lte: prevDates.end,
       },
-      property: propertyFilter,
     },
     _sum: {
       sessions: true,
@@ -79,15 +98,15 @@ export const getPortfolioTotals = async (
   });
 
   const currSum = {
-    sessions: currentAgg._sum.sessions || 0,
-    organicTraffic: currentAgg._sum.organicTraffic || 0,
-    conversions: currentAgg._sum.conversions || 0,
+    sessions: currentAgg._sum?.sessions || 0,
+    organicTraffic: currentAgg._sum?.organicTraffic || 0,
+    conversions: currentAgg._sum?.conversions || 0,
   };
 
   const prevSum = {
-    sessions: prevAgg._sum.sessions || 0,
-    organicTraffic: prevAgg._sum.organicTraffic || 0,
-    conversions: prevAgg._sum.conversions || 0,
+    sessions: prevAgg._sum?.sessions || 0,
+    organicTraffic: prevAgg._sum?.organicTraffic || 0,
+    conversions: prevAgg._sum?.conversions || 0,
   };
 
   return {

@@ -7,9 +7,9 @@ import styles from "@/styles/SharedModule.module.css";
 import modalStyles from "@/styles/ClientModal.module.css";
 
 interface Campaign {
-  id: number;
+  id: string | number;
   campaignName: string;
-  clientId: number;
+  clientId: string | number;
   client: { name: string };
   status: string;
   priority: string;
@@ -45,7 +45,7 @@ export default function PRDashboardPage() {
   const [priorityFilter, setPriorityFilter] = useState("All");
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [clientsList, setClientsList] = useState<Array<{ id: number; name: string }>>([]);
+  const [clientsList, setClientsList] = useState<Array<{ id: string | number; name: string }>>([]);
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState(true);
 

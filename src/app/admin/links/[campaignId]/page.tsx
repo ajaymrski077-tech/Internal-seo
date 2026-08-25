@@ -8,7 +8,7 @@ import styles from "@/styles/SharedModule.module.css";
 import modalStyles from "@/styles/ClientModal.module.css";
 
 interface Opportunity {
-  id: number;
+  id: string | number;
   domain: string;
   websiteName: string;
   websiteUrl: string;
@@ -26,7 +26,7 @@ interface Opportunity {
 }
 
 interface Backlink {
-  id: number;
+  id: string | number;
   sourceDomain: string;
   sourceUrl: string;
   targetUrl: string;
@@ -40,7 +40,7 @@ interface Backlink {
 }
 
 interface Task {
-  id: number;
+  id: string | number;
   title: string;
   description: string | null;
   status: string;
@@ -50,7 +50,7 @@ interface Task {
 }
 
 interface ActivityLog {
-  id: number;
+  id: string | number;
   actorEmail: string;
   action: string;
   metadata: string | null;
@@ -58,9 +58,9 @@ interface ActivityLog {
 }
 
 interface CampaignDetail {
-  id: number;
+  id: string | number;
   name: string;
-  clientId: number;
+  clientId: string | number;
   client: { name: string };
   description: string | null;
   objective: string | null;
@@ -79,12 +79,12 @@ interface CampaignDetail {
 export default function LinkCampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const campaignId = parseInt(params.campaignId as string, 10);
+  const campaignId = params.campaignId as string;
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview"); // overview, opportunities, backlinks, tasks, activity
-  const [verifyingId, setVerifyingId] = useState<number | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | number | null>(null);
 
   // Modals state
   const [isEditCampaignOpen, setIsEditCampaignOpen] = useState(false);
@@ -164,7 +164,7 @@ export default function LinkCampaignDetailPage() {
   };
 
   useEffect(() => {
-    if (!isNaN(campaignId)) {
+    if (campaignId && campaignId.trim() !== "") {
       fetchCampaignDetail();
     }
   }, [campaignId]);
@@ -277,7 +277,7 @@ export default function LinkCampaignDetailPage() {
     }
   };
 
-  const handleQuickOppStatus = async (recordId: number, status: string) => {
+  const handleQuickOppStatus = async (recordId: string | number, status: string) => {
     try {
       const res = await fetch(`/api/links/opportunities/${recordId}`, {
         method: "PATCH",
@@ -290,7 +290,7 @@ export default function LinkCampaignDetailPage() {
     }
   };
 
-  const handleDeleteOpportunity = async (recordId: number) => {
+  const handleDeleteOpportunity = async (recordId: string | number) => {
     const confirmDelete = window.confirm("Are you sure you want to remove this link prospect?");
     if (!confirmDelete) return;
 
@@ -323,7 +323,7 @@ export default function LinkCampaignDetailPage() {
           anchorText: backAnchor,
           linkType: backType,
           notes: backNotes || null,
-          opportunityId: backOppId ? parseInt(backOppId, 10) : null,
+          opportunityId: backOppId || null,
           acquiredDate: backAcquiredDate || null,
         }),
       });
@@ -350,7 +350,7 @@ export default function LinkCampaignDetailPage() {
     }
   };
 
-  const handleVerifyBacklink = async (backlinkId: number) => {
+  const handleVerifyBacklink = async (backlinkId: string | number) => {
     setVerifyingId(backlinkId);
     try {
       const res = await fetch(`/api/links/backlinks/${backlinkId}/verify`, { method: "POST" });
@@ -364,7 +364,7 @@ export default function LinkCampaignDetailPage() {
     }
   };
 
-  const handleDeleteBacklink = async (backlinkId: number) => {
+  const handleDeleteBacklink = async (backlinkId: string | number) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this backlink record?");
     if (!confirmDelete) return;
 
@@ -422,7 +422,7 @@ export default function LinkCampaignDetailPage() {
     }
   };
 
-  const handleQuickTaskStatus = async (taskId: number, newStatus: string) => {
+  const handleQuickTaskStatus = async (taskId: string | number, newStatus: string) => {
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
@@ -435,7 +435,7 @@ export default function LinkCampaignDetailPage() {
     }
   };
 
-  const handleDeleteTask = async (taskId: number) => {
+  const handleDeleteTask = async (taskId: string | number) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this task?");
     if (!confirmDelete) return;
 

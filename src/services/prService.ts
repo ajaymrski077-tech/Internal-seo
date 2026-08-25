@@ -3,8 +3,34 @@ import prisma from "@/lib/db";
 export const getPrOverview = async (clientId?: string | number) => {
   const today = new Date();
 
-  const campaignWhere = clientId ? { clientId } : {};
-  const relationWhere = clientId ? { campaign: { clientId } } : {};
+  let campaignIds: string[] = [];
+  if (clientId) {
+    const campaigns = await prisma.prCampaign.findMany({
+      where: { clientId: clientId.toString() },
+      select: { id: true }
+    });
+    campaignIds = campaigns.map((c: any) => c.id);
+  }
+
+  const campaignWhere = clientId ? { clientId: clientId.toString() } : {};
+  const relationWhere = clientId ? { campaignId: { in: campaignIds } } : {};
+
+  if (clientId && campaignIds.length === 0) {
+    return {
+      totalCampaigns: 0,
+      activeCampaigns: 0,
+      completedCampaigns: 0,
+      totalOutreach: 0,
+      contactedCount: 0,
+      responsesCount: 0,
+      interestedCount: 0,
+      publishedPlacements: 0,
+      responseRate: 0,
+      placementRate: 0,
+      upcomingFollowUps: 0,
+      overdueFollowUps: 0,
+    };
+  }
 
   const [
     totalCampaigns,

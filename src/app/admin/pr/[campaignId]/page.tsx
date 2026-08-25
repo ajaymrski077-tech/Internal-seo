@@ -8,7 +8,7 @@ import styles from "@/styles/SharedModule.module.css";
 import modalStyles from "@/styles/ClientModal.module.css";
 
 interface OutreachRecord {
-  id: number;
+  id: string | number;
   contactName: string;
   contactEmail: string | null;
   publicationName: string;
@@ -21,7 +21,7 @@ interface OutreachRecord {
 }
 
 interface Placement {
-  id: number;
+  id: string | number;
   publicationName: string;
   publicationUrl: string | null;
   articleTitle: string;
@@ -34,7 +34,7 @@ interface Placement {
 }
 
 interface Task {
-  id: number;
+  id: string | number;
   title: string;
   description: string | null;
   status: string;
@@ -44,7 +44,7 @@ interface Task {
 }
 
 interface ActivityLog {
-  id: number;
+  id: string | number;
   actorEmail: string;
   action: string;
   metadata: string | null;
@@ -52,9 +52,9 @@ interface ActivityLog {
 }
 
 interface CampaignDetail {
-  id: number;
+  id: string | number;
   campaignName: string;
-  clientId: number;
+  clientId: string | number;
   client: { name: string };
   description: string | null;
   objective: string | null;
@@ -73,7 +73,7 @@ interface CampaignDetail {
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const campaignId = parseInt(params.campaignId as string, 10);
+  const campaignId = params.campaignId as string;
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,7 +152,7 @@ export default function CampaignDetailPage() {
   };
 
   useEffect(() => {
-    if (!isNaN(campaignId)) {
+    if (campaignId && campaignId.trim() !== "") {
       fetchCampaignDetail();
     }
   }, [campaignId]);
@@ -255,7 +255,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleQuickOutreachStatus = async (recordId: number, status: string) => {
+  const handleQuickOutreachStatus = async (recordId: string | number, status: string) => {
     try {
       const res = await fetch(`/api/pr/outreach/${recordId}`, {
         method: "PATCH",
@@ -274,7 +274,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleDeleteOutreach = async (recordId: number) => {
+  const handleDeleteOutreach = async (recordId: string | number) => {
     const confirmDelete = window.confirm("Are you sure you want to remove this outreach target?");
     if (!confirmDelete) return;
 
@@ -309,7 +309,7 @@ export default function CampaignDetailPage() {
           targetUrl: placeTargetUrl || null,
           linkType: placeLinkType,
           notes: placeNotes || null,
-          outreachId: placeOutreachId ? parseInt(placeOutreachId, 10) : null,
+          outreachId: placeOutreachId || null,
         }),
       });
 
@@ -336,7 +336,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleVerifyPlacement = async (placementId: number, isVerified: boolean) => {
+  const handleVerifyPlacement = async (placementId: string | number, isVerified: boolean) => {
     try {
       const res = await fetch(`/api/pr/placements/${placementId}`, {
         method: "PATCH",
@@ -349,7 +349,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleDeletePlacement = async (placementId: number) => {
+  const handleDeletePlacement = async (placementId: string | number) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this placement?");
     if (!confirmDelete) return;
 
@@ -407,7 +407,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleQuickTaskStatus = async (taskId: number, newStatus: string) => {
+  const handleQuickTaskStatus = async (taskId: string | number, newStatus: string) => {
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
@@ -420,7 +420,7 @@ export default function CampaignDetailPage() {
     }
   };
 
-  const handleDeleteTask = async (taskId: number) => {
+  const handleDeleteTask = async (taskId: string | number) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this task?");
     if (!confirmDelete) return;
 
