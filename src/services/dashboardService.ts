@@ -662,36 +662,45 @@ export const getClientWorkspaceData = async (
     take: 30,
   });
 
+  // Fetch client-specific campaigns and properties
+  const [prCampaignsList, linkCampaignsList] = await Promise.all([
+    prisma.prCampaign.findMany({ where: { clientId: client.id }, select: { id: true } }),
+    prisma.linkCampaign.findMany({ where: { clientId: client.id }, select: { id: true } }),
+  ]);
+  const prCampaignIds = prCampaignsList.map((c: any) => c.id);
+  const linkCampaignIds = linkCampaignsList.map((c: any) => c.id);
+  const propertyIds = (client.properties || []).map((p: any) => p.id);
+
   // Fetch client-specific Digital PR stats
   const [activePrCampaigns, prOutreachCount, prPlacementsCount, contactedCount, responsesCount] = await Promise.all([
     prisma.prCampaign.count({ where: { clientId: client.id, status: "ACTIVE" } }),
-    prisma.prOutreachRecord.count({ where: { campaign: { clientId: client.id } } }),
-    prisma.prPlacement.count({ where: { campaign: { clientId: client.id } } }),
-    prisma.prOutreachRecord.count({ where: { campaign: { clientId: client.id }, outreachStatus: { not: "NOT_CONTACTED" } } }),
-    prisma.prOutreachRecord.count({ where: { campaign: { clientId: client.id }, outreachStatus: { in: ["RESPONDED", "INTERESTED", "PUBLISHED", "REJECTED"] } } }),
+    prCampaignIds.length > 0 ? prisma.prOutreachRecord.count({ where: { campaignId: { in: prCampaignIds } } }) : 0,
+    prCampaignIds.length > 0 ? prisma.prPlacement.count({ where: { campaignId: { in: prCampaignIds } } }) : 0,
+    prCampaignIds.length > 0 ? prisma.prOutreachRecord.count({ where: { campaignId: { in: prCampaignIds }, outreachStatus: { not: "NOT_CONTACTED" } } }) : 0,
+    prCampaignIds.length > 0 ? prisma.prOutreachRecord.count({ where: { campaignId: { in: prCampaignIds }, outreachStatus: { in: ["RESPONDED", "INTERESTED", "PUBLISHED", "REJECTED"] } } }) : 0,
   ]);
   const prResponseRate = contactedCount > 0 ? (responsesCount / contactedCount) * 100 : 0;
 
   // Fetch client-specific Link Building stats
   const [activeLinkCampaigns, linkOpportunitiesCount, acquiredLinksCount, liveLinksCount, attentionLinksCount] = await Promise.all([
     prisma.linkCampaign.count({ where: { clientId: client.id, status: "ACTIVE" } }),
-    prisma.linkOpportunity.count({ where: { campaign: { clientId: client.id }, status: "QUALIFIED" } }),
-    prisma.acquiredBacklink.count({ where: { campaign: { clientId: client.id } } }),
-    prisma.acquiredBacklink.count({ where: { campaign: { clientId: client.id }, status: "LIVE" } }),
-    prisma.acquiredBacklink.count({ where: { campaign: { clientId: client.id }, status: { in: ["MISSING", "BROKEN"] } } }),
+    linkCampaignIds.length > 0 ? prisma.linkOpportunity.count({ where: { campaignId: { in: linkCampaignIds }, status: "QUALIFIED" } }) : 0,
+    linkCampaignIds.length > 0 ? prisma.acquiredBacklink.count({ where: { campaignId: { in: linkCampaignIds } } }) : 0,
+    linkCampaignIds.length > 0 ? prisma.acquiredBacklink.count({ where: { campaignId: { in: linkCampaignIds }, status: "LIVE" } }) : 0,
+    linkCampaignIds.length > 0 ? prisma.acquiredBacklink.count({ where: { campaignId: { in: linkCampaignIds }, status: { in: ["MISSING", "BROKEN"] } } }) : 0,
   ]);
 
   // Fetch client-specific rankings stats
   const rankingsOverview = await getRankingsOverview(client.id);
 
   // Fetch client-specific On-Page SEO stats
-  const latestAudit = await prisma.seoAudit.findFirst({
-    where: { property: { clientId: client.id } },
+  const latestAudit = propertyIds.length > 0 ? await prisma.seoAudit.findFirst({
+    where: { propertyId: { in: propertyIds } },
     orderBy: { createdAt: "desc" },
-  });
+  }) : null;
 
   // Fetch GBP Location mapping
-  const gbpLocation = primaryProperty ? await prisma.gbpLocation.findUnique({
+  const gbpLocation = primaryProperty ? await prisma.gbpLocation.findFirst({
     where: { propertyId: primaryProperty.id },
     include: { snapshots: { orderBy: { date: "desc" }, take: 1 } }
   }) : null;
@@ -708,19 +717,19 @@ export const getClientWorkspaceData = async (
       managerName: client.managerName,
       notes: client.notes,
       startDate: client.startDate?.toISOString() || null,
-      createdAt: client.createdAt.toISOString(),
-      updatedAt: client.updatedAt.toISOString(),
-      properties: (client.properties as any[]).map((p: any) => ({
+      createdAt: client.createdAt ? new Date(client.createdAt).toISOString() : new Date().toISOString(),
+      updatedAt: client.updatedAt ? new Date(client.updatedAt).toISOString() : new Date().toISOString(),
+      properties: ((client.properties as any[]) || []).map((p: any) => ({
         id: p.id,
         domain: p.domain,
         name: p.name,
-        connections: (p.connections as any[]).map((c: any) => ({
+        connections: ((p.connections as any[]) || []).map((c: any) => ({
           id: c.id,
           provider: c.provider,
           status: c.status,
           syncStatus: c.syncStatus,
           syncError: c.syncError,
-          lastSyncTime: c.lastSyncTime?.toISOString() || null,
+          lastSyncTime: c.lastSyncTime ? new Date(c.lastSyncTime).toISOString() : null,
           externalId: c.externalId,
           conversionEventName: c.conversionEventName,
         }))

@@ -99,18 +99,33 @@ export const getPortfolioTotals = async (
 };
 
 export const getClientTotals = async (
-  clientId: number,
+  clientId: string | number,
   startDate: Date,
   endDate: Date
 ): Promise<MetricDelta> => {
   const prevDates = getPreviousPeriodDates(startDate, endDate);
 
+  const properties = await prisma.websiteProperty.findMany({
+    where: { clientId: clientId.toString() },
+    select: { id: true }
+  });
+  const propertyIds = properties.map((p: any) => p.id);
+
+  if (propertyIds.length === 0) {
+    return {
+      sessions: 0,
+      organicTraffic: 0,
+      conversions: 0,
+      sessionsChange: 0,
+      organicTrafficChange: 0,
+      conversionsChange: 0,
+    };
+  }
+
   // Current period aggregates
   const currentAgg = await prisma.analyticsSnapshot.aggregate({
     where: {
-      property: {
-        clientId,
-      },
+      propertyId: { in: propertyIds },
       date: {
         gte: startDate,
         lte: endDate,
@@ -126,9 +141,7 @@ export const getClientTotals = async (
   // Previous period aggregates
   const prevAgg = await prisma.analyticsSnapshot.aggregate({
     where: {
-      property: {
-        clientId,
-      },
+      propertyId: { in: propertyIds },
       date: {
         gte: prevDates.start,
         lte: prevDates.end,
@@ -142,15 +155,15 @@ export const getClientTotals = async (
   });
 
   const currSum = {
-    sessions: currentAgg._sum.sessions || 0,
-    organicTraffic: currentAgg._sum.organicTraffic || 0,
-    conversions: currentAgg._sum.conversions || 0,
+    sessions: currentAgg._sum?.sessions || 0,
+    organicTraffic: currentAgg._sum?.organicTraffic || 0,
+    conversions: currentAgg._sum?.conversions || 0,
   };
 
   const prevSum = {
-    sessions: prevAgg._sum.sessions || 0,
-    organicTraffic: prevAgg._sum.organicTraffic || 0,
-    conversions: prevAgg._sum.conversions || 0,
+    sessions: prevAgg._sum?.sessions || 0,
+    organicTraffic: prevAgg._sum?.organicTraffic || 0,
+    conversions: prevAgg._sum?.conversions || 0,
   };
 
   return {
@@ -162,15 +175,19 @@ export const getClientTotals = async (
 };
 
 export const getClientHistory = async (
-  clientId: number,
+  clientId: string | number,
   startDate: Date,
   endDate: Date
 ): Promise<HistoryDataPoint[]> => {
-  const snapshots = await prisma.analyticsSnapshot.findMany({
+  const properties = await prisma.websiteProperty.findMany({
+    where: { clientId: clientId.toString() },
+    select: { id: true }
+  });
+  const propertyIds = properties.map((p: any) => p.id);
+
+  const snapshots = propertyIds.length > 0 ? await prisma.analyticsSnapshot.findMany({
     where: {
-      property: {
-        clientId,
-      },
+      propertyId: { in: propertyIds },
       date: {
         gte: startDate,
         lte: endDate,
@@ -179,7 +196,7 @@ export const getClientHistory = async (
     orderBy: {
       date: "asc",
     },
-  });
+  }) : [];
 
   // Aggregate by date (in case a client has multiple properties)
   const historyMap: Record<string, HistoryDataPoint> = {};

@@ -4,7 +4,13 @@ export const userCol = createModel("users");
 export const websitePropertyCol = createModel("websiteProperties", attachPropertyRelations);
 export const integrationConnectionCol = createModel("integrationConnections");
 export const analyticsSnapshotCol = createModel("analyticsSnapshots");
-export const deliveryEventCol = createModel("deliveryEvents");
+export const deliveryEventCol = createModel("deliveryEvents", async (item, include) => {
+  if (include?.contentDetails) item.contentDetails = await contentDeliveryCol.findFirst({ where: { deliveryEventId: item.id } });
+  if (include?.linkDetails) item.linkDetails = await linkDeliveryCol.findFirst({ where: { deliveryEventId: item.id } });
+  if (include?.client && item.clientId) item.client = await clientCol.findUnique({ where: { id: item.clientId } });
+  if (include?.property && item.propertyId) item.property = await websitePropertyCol.findUnique({ where: { id: item.propertyId } });
+  return item;
+});
 export const contentDeliveryCol = createModel("contentDeliveries");
 export const linkDeliveryCol = createModel("linkDeliveries");
 export const activityLogCol = createModel("activityLogs");
@@ -78,10 +84,23 @@ export const clientCol = createModel("clients", attachClientRelations);
 async function attachClientRelations(client: any, include: any) {
   if (!client || !include) return client;
   if (include.properties) {
-    client.properties = await websitePropertyCol.findMany({ where: { clientId: client.id } });
+    const propInclude = typeof include.properties === "object"
+      ? (include.properties.include || include.properties)
+      : { connections: true };
+    client.properties = await websitePropertyCol.findMany({
+      where: { clientId: client.id },
+      include: propInclude
+    });
   }
   if (include.deliveryEvents) {
-    client.deliveryEvents = await deliveryEventCol.findMany({ where: { clientId: client.id } });
+    const deliveryInclude = typeof include.deliveryEvents === "object"
+      ? (include.deliveryEvents.include || include.deliveryEvents)
+      : undefined;
+    client.deliveryEvents = await deliveryEventCol.findMany({
+      where: { clientId: client.id },
+      include: deliveryInclude,
+      orderBy: include.deliveryEvents?.orderBy
+    });
   }
   if (include.reports) {
     client.reports = await reportCol.findMany({ where: { clientId: client.id } });

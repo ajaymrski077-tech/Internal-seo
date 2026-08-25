@@ -39,7 +39,7 @@ import ClientModal from "@/components/ClientModal";
 
 // Local Interfaces
 interface ConnectionDetail {
-  id: number;
+  id: string | number;
   provider: string;
   status: string;
   syncStatus: string | null;
@@ -50,14 +50,14 @@ interface ConnectionDetail {
 }
 
 interface PropertyDetail {
-  id: number;
+  id: string | number;
   domain: string;
   name: string;
   connections: ConnectionDetail[];
 }
 
 interface ClientDetail {
-  id: number;
+  id: string | number;
   name: string;
   companyName: string | null;
   logoUrl: string | null;
@@ -72,20 +72,20 @@ interface ClientDetail {
 }
 
 interface ActivityLog {
-  id: number;
+  id: string | number;
   actorEmail: string;
   action: string;
-  clientId: number | null;
+  clientId: string | number | null;
   clientName: string | null;
   metadata: string | null;
   createdAt: string;
 }
 
 interface DeliveryDetail {
-  id: number;
-  clientId: number;
+  id: string | number;
+  clientId: string | number;
   clientName: string;
-  propertyId: number | null;
+  propertyId: string | number | null;
   propertyDomain: string | null;
   type: string;
   date: string;
@@ -150,7 +150,7 @@ interface WorkspacePayload {
     declinedKeywords: number;
   };
   onpageStats?: {
-    id: number;
+    id: string | number;
     score: number | null;
     status: string;
     pagesCrawled: number;
@@ -158,7 +158,7 @@ interface WorkspacePayload {
     createdAt: string;
   } | null;
   gbpStats?: {
-    id: number;
+    id: string | number;
     displayName: string;
     primaryCategory: string | null;
     syncStatus: string;
@@ -176,7 +176,7 @@ interface WorkspacePayload {
 export default function ClientWorkspacePage({ params }: { params: Promise<{ clientId: string }> }) {
   const router = useRouter();
   const { clientId: clientIdStr } = use(params);
-  const clientId = parseInt(clientIdStr, 10);
+  const clientId = clientIdStr;
 
   // Layout Tab State
   const [activeTab, setActiveTab] = useState("overview"); // overview, analytics, integrations, activity, settings
@@ -230,7 +230,7 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
 
   // Fetch unified workspace data
   const fetchWorkspace = useCallback(async () => {
-    if (isNaN(clientId)) return;
+    if (!clientId || clientId.trim() === "" || clientId === "invalid-id") return;
     setLoading(true);
     setError("");
     try {
@@ -268,7 +268,7 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
 
   // Fetch discovered properties/sites after OAuth connections exist
   const fetchDiscoveredResources = useCallback(async () => {
-    if (isNaN(clientId) || !data) return;
+    if (!clientId || !data) return;
 
     const ga4Conn = data.client.properties[0]?.connections.find(c => c.provider === "GA4");
     const gscConn = data.client.properties[0]?.connections.find(c => c.provider === "GSC");
