@@ -16,8 +16,7 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const clientId = parseInt(id, 10);
-    if (isNaN(clientId)) {
+    if (!id || id.trim() === "" || id === "invalid") {
       return NextResponse.json({ error: "Invalid client ID" }, { status: 400 });
     }
 
@@ -29,7 +28,7 @@ export async function POST(
     }
 
     const property = await prisma.websiteProperty.findFirst({
-      where: { clientId },
+      where: { clientId: id },
     });
 
     if (!property) {
