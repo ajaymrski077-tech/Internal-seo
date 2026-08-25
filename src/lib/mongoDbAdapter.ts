@@ -23,6 +23,16 @@ function buildQuery(query: any): any {
   const out: any = {};
 
   for (const [key, val] of Object.entries(query)) {
+    if (key.includes("_") && val && typeof val === "object" && !(val instanceof Date) && !Array.isArray(val)) {
+      const isOperatorObj = ["in", "notIn", "gte", "gt", "lte", "lt", "not", "equals", "contains"].some(k => k in val);
+      if (!isOperatorObj) {
+        for (const [subKey, subVal] of Object.entries(val)) {
+          out[subKey] = subVal instanceof Date ? subVal : (subKey === "id" ? toObjectId(subVal as any) : subVal);
+        }
+        continue;
+      }
+    }
+
     if (key === "id") {
       if (typeof val === "object" && val !== null) {
         if ("in" in val && Array.isArray((val as any).in)) {
