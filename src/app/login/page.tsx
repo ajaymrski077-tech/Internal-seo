@@ -48,8 +48,24 @@ function LoginForm() {
     }
 
     if (mode === "signup") {
-      if (password.length < 6) {
-        setError("Password must be at least 6 characters long.");
+      if (password.length < 8) {
+        setError("Password must be at least 8 characters long.");
+        return;
+      }
+      if (!/[A-Z]/.test(password)) {
+        setError("Password must contain at least one uppercase letter.");
+        return;
+      }
+      if (!/[a-z]/.test(password)) {
+        setError("Password must contain at least one lowercase letter.");
+        return;
+      }
+      if (!/\d/.test(password)) {
+        setError("Password must contain at least one number.");
+        return;
+      }
+      if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
+        setError("Password must contain at least one special character (e.g. @, #, $, %, !).");
         return;
       }
       if (password !== confirmPassword) {
@@ -184,7 +200,7 @@ function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 className={styles.input}
                 style={{ paddingRight: "40px", width: "100%" }}
-                placeholder={mode === "signup" ? "At least 6 characters" : "••••••••"}
+                placeholder={mode === "signup" ? "At least 8 characters with symbols" : "••••••••"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -208,6 +224,25 @@ function LoginForm() {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {mode === "signup" && password.length > 0 && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", marginTop: "6px", fontSize: "0.725rem", background: "var(--bg-secondary)", padding: "8px 10px", borderRadius: "6px", border: "1px solid var(--border-color)" }}>
+                <span style={{ color: password.length >= 8 ? "#10b981" : "#94a3b8", fontWeight: password.length >= 8 ? 600 : 400 }}>
+                  {password.length >= 8 ? "✓" : "○"} 8+ characters
+                </span>
+                <span style={{ color: /[A-Z]/.test(password) ? "#10b981" : "#94a3b8", fontWeight: /[A-Z]/.test(password) ? 600 : 400 }}>
+                  {/[A-Z]/.test(password) ? "✓" : "○"} Uppercase (A-Z)
+                </span>
+                <span style={{ color: /[a-z]/.test(password) ? "#10b981" : "#94a3b8", fontWeight: /[a-z]/.test(password) ? 600 : 400 }}>
+                  {/[a-z]/.test(password) ? "✓" : "○"} Lowercase (a-z)
+                </span>
+                <span style={{ color: /\d/.test(password) ? "#10b981" : "#94a3b8", fontWeight: /\d/.test(password) ? 600 : 400 }}>
+                  {/\d/.test(password) ? "✓" : "○"} Number (0-9)
+                </span>
+                <span style={{ color: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password) ? "#10b981" : "#94a3b8", fontWeight: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password) ? 600 : 400 }}>
+                  {/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password) ? "✓" : "○"} Symbol (@#$!)
+                </span>
+              </div>
+            )}
           </div>
 
           {mode === "signup" && (
