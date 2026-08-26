@@ -165,21 +165,21 @@ async function attachClientRelations(client: ClientWithRelations, include: Inclu
   if (!client || !include) return client;
   if (include.properties) {
     const propInclude = typeof include.properties === "object" && include.properties !== null
-      ? (include.properties.include || include.properties)
+      ? ((include.properties as Record<string, unknown>).include || include.properties)
       : { connections: true };
     client.properties = await websitePropertyCol.findMany({
       where: { clientId: client.id },
-      include: propInclude
+      include: propInclude as Record<string, unknown>
     });
   }
   if (include.deliveryEvents) {
     const deliveryInclude = typeof include.deliveryEvents === "object" && include.deliveryEvents !== null
-      ? (include.deliveryEvents.include || include.deliveryEvents)
+      ? ((include.deliveryEvents as Record<string, unknown>).include || include.deliveryEvents)
       : undefined;
     client.deliveryEvents = await deliveryEventCol.findMany({
       where: { clientId: client.id },
-      include: deliveryInclude,
-      orderBy: include.deliveryEvents?.orderBy
+      include: deliveryInclude as Record<string, unknown> | undefined,
+      orderBy: (include.deliveryEvents as Record<string, unknown>)?.orderBy as unknown
     });
   }
   if (include.reports) {
@@ -212,11 +212,11 @@ async function attachPropertyRelations(prop: WebsitePropertyWithRelations, inclu
     prop.connections = await integrationConnectionCol.findMany({ where: { propertyId: prop.id } });
   }
   if (include.snapshots) {
-    const snapshotInclude = include.snapshots || {};
+    const snapshotInclude = (include.snapshots as Record<string, unknown>) || {};
     prop.snapshots = await analyticsSnapshotCol.findMany({
-      where: { propertyId: prop.id, ...(snapshotInclude.where || {}) },
-      orderBy: snapshotInclude.orderBy,
-      take: snapshotInclude.take,
+      where: { propertyId: prop.id, ...((snapshotInclude.where as Record<string, unknown>) || {}) },
+      orderBy: snapshotInclude.orderBy as unknown,
+      take: snapshotInclude.take as number | undefined,
     });
   }
   if (include.trackedKeywords) {
@@ -287,7 +287,7 @@ async function attachLinkCampaignRelations(item: LinkCampaignWithRelations, incl
 async function attachTrackedKeywordRelations(item: TrackedKeywordWithRelations, include: IncludeConfig): Promise<TrackedKeywordWithRelations> {
   if (include?.client && item.clientId) item.client = await clientCol.findUnique({ where: { id: item.clientId } });
   if (include?.property && item.propertyId) item.property = await websitePropertyCol.findUnique({ where: { id: item.propertyId } });
-  if (include?.snapshots) item.snapshots = await keywordRankingSnapshotCol.findMany({ where: { trackedKeywordId: item.id }, orderBy: include.snapshots?.orderBy });
+  if (include?.snapshots) item.snapshots = await keywordRankingSnapshotCol.findMany({ where: { trackedKeywordId: item.id }, orderBy: (include.snapshots as Record<string, unknown>)?.orderBy as unknown });
   return item;
 }
 
