@@ -28,7 +28,8 @@ export async function GET(
     }
 
     return NextResponse.json({ item });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Get Content Item Error:", error);
     return NextResponse.json({ error: "Failed to load content item" }, { status: 500 });
   }
@@ -77,7 +78,8 @@ export async function PATCH(
     });
 
     return NextResponse.json({ success: true, item: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Update Content Item Error:", error);
     return NextResponse.json({ error: "Failed to update content item" }, { status: 500 });
   }
@@ -110,11 +112,10 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
-      const dbTx = tx as any;
-      await dbTx.contentItem.delete({ where: { id } });
+      await tx.contentItem.delete({ where: { id } });
 
       // Log action
-      await dbTx.activityLog.create({
+      await tx.activityLog.create({
         data: {
           actorEmail: user.email,
           action: "CONTENT_ITEM_DELETED",
@@ -126,7 +127,8 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Delete Content Item Error:", error);
     return NextResponse.json({ error: "Failed to delete content item" }, { status: 500 });
   }

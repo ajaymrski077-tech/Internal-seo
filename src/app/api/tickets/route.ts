@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const clientId = searchParams.get("clientId") || "All";
     const archived = searchParams.get("archived") === "true";
 
-    let where: any = {};
+    const where: Record<string, unknown> = {};
     
     // Apply status filter
     if (status !== "All") {
@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ tickets });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Tickets fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch tickets" }, { status: 500 });
   }
@@ -78,8 +79,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(ticket, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Ticket creation error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create ticket" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create ticket" }, { status: 500 });
   }
 }

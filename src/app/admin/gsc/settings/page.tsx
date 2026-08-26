@@ -43,7 +43,8 @@ export default function GscSettingsPage() {
         const json = await res.json();
         setProperties(json.properties || []);
         setClients(json.clients || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
+      const errObj = err as Error;
         handleApiError(err, { 
           toast: { error: toastError },
           fallbackMessage: "Failed to load GSC settings"
@@ -55,7 +56,7 @@ export default function GscSettingsPage() {
     loadData();
   }, [toastError]);
 
-  const handleUpdate = (id: number, field: keyof Property, value: any) => {
+  const handleUpdate = (id: number, field: keyof Property, value: Property[keyof Property]) => {
     setUpdates(prev => ({
       ...prev,
       [id]: {
@@ -114,7 +115,8 @@ export default function GscSettingsPage() {
         return p;
       }));
       setUpdates({});
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errObj = err as Error;
       handleApiError(err, { 
         toast: { error: toastError },
         fallbackMessage: "Failed to save settings"

@@ -209,7 +209,7 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
   // Discovered Resources states
   const [discoveredGa4Properties, setDiscoveredGa4Properties] = useState<Array<{ propertyId: string; displayName: string; accountName: string }>>([]);
   const [discoveredGscSites, setDiscoveredGscSites] = useState<Array<{ siteUrl: string; permissionLevel: string }>>([]);
-  const [discoveredGbpLocations, setDiscoveredGbpLocations] = useState<Array<{ name: string; title: string; primaryCategory?: string; address?: string; phone?: string; websiteUri?: string }>>([]);
+  const [discoveredGbpLocations, setDiscoveredGbpLocations] = useState<Array<{ name: string; title: string; primaryCategory?: string; address?: string; phone?: string; websiteUri?: string; accountName?: string }>>([]);
   const [loadingGa4Props, setLoadingGa4Props] = useState(false);
   const [loadingGscSites, setLoadingGscSites] = useState(false);
   const [loadingGbpLocations, setLoadingGbpLocations] = useState(false);
@@ -254,9 +254,10 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
 
       setSettingsManager(payload.client.managerName || "");
       setSettingsNotes(payload.client.notes || "");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errObj = err as Error;
       console.error(err);
-      setError(err.message || "Failed to load workspace data.");
+      setError(errObj?.message || "Failed to load workspace data.");
     } finally {
       setLoading(false);
     }
@@ -286,7 +287,8 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
         } else {
           setDiscoveredGa4Properties(resData.properties || []);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+      const errObj = err as Error;
         setGa4DiscError("Failed to discover GA4 properties");
       } finally {
         setLoadingGa4Props(false);
@@ -307,7 +309,8 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
         } else {
           setDiscoveredGscSites(resData.sites || []);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+      const errObj = err as Error;
         setGscDiscError("Failed to discover GSC properties");
       } finally {
         setLoadingGscSites(false);
@@ -328,7 +331,8 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
         } else {
           setDiscoveredGbpLocations(resData.locations || []);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+      const errObj = err as Error;
         setGbpDiscError("Failed to discover GMB locations");
       } finally {
         setLoadingGbpLocations(false);
@@ -643,7 +647,7 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           locationName: selected.name,
-          accountName: (selected as any).accountName,
+          accountName: selected.accountName,
           displayName: selected.title,
           primaryCategory: selected.primaryCategory,
           address: selected.address,
@@ -1434,14 +1438,14 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
                     <label>Selected Metric</label>
                     <div className={styles.pillGroup}>
                       {[
-                        { id: "sessions", label: "GA4 Sessions" },
-                        { id: "organicTraffic", label: "Search Clicks" },
-                        { id: "conversions", label: "Goal Conversions" }
+                        { id: "sessions" as const, label: "GA4 Sessions" },
+                        { id: "organicTraffic" as const, label: "Search Clicks" },
+                        { id: "conversions" as const, label: "Goal Conversions" }
                       ].map((m) => (
                         <button
                           key={m.id}
                           className={`${styles.pillBtn} ${activeMetric === m.id ? styles.pillBtnActive : ""}`}
-                          onClick={() => setActiveMetric(m.id as any)}
+                          onClick={() => setActiveMetric(m.id)}
                         >
                           {m.label}
                         </button>

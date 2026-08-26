@@ -30,8 +30,9 @@ export async function GET(
     }
 
     return NextResponse.json(task);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to load task" }, { status: 500 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Failed to load task" }, { status: 500 });
   }
 }
 
@@ -54,7 +55,7 @@ export async function PATCH(
     const body = await req.json();
     const { title, description, status, priority, assignedTo, clientId, dueDate, prCampaignId, linkCampaignId } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (title !== undefined) data.title = title.trim();
     if (description !== undefined) data.description = description || null;
     if (status !== undefined) data.status = status.toUpperCase();
@@ -74,9 +75,10 @@ export async function PATCH(
     });
 
     return NextResponse.json(task);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Task update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update task" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update task" }, { status: 500 });
   }
 }
 
@@ -101,8 +103,9 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Task delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete task" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete task" }, { status: 500 });
   }
 }

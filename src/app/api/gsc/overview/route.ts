@@ -30,23 +30,37 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const data = properties.map((p: any) => {
+    interface SnapshotRecord {
+      date: Date;
+      organicTraffic: number;
+      gscImpressions: number;
+      gscPosition: number;
+    }
+    interface GscPropRecord {
+      id: string | number;
+      domain: string;
+      clientId: string | number;
+      client: { name: string };
+      snapshots: SnapshotRecord[];
+    }
+
+    const data = (properties as unknown as GscPropRecord[]).map((p) => {
       let totalClicks = 0;
       let totalImpressions = 0;
       let positionSum = 0;
       let count = 0;
 
-      const chartData = p.snapshots.map((s: any) => {
-        totalClicks += s.organicTraffic;
-        totalImpressions += s.gscImpressions;
+      const chartData = (p.snapshots || []).map((s) => {
+        totalClicks += s.organicTraffic || 0;
+        totalImpressions += s.gscImpressions || 0;
         if (s.gscPosition > 0) {
           positionSum += s.gscPosition;
           count++;
         }
         return {
-          date: s.date.toISOString().split("T")[0],
-          clicks: s.organicTraffic,
-          impressions: s.gscImpressions
+          date: s.date ? new Date(s.date).toISOString().split("T")[0] : "",
+          clicks: s.organicTraffic || 0,
+          impressions: s.gscImpressions || 0
         };
       });
 
@@ -63,7 +77,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ data });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("GSC Overview API Error:", error);
     return NextResponse.json({ error: "Failed to load GSC overview" }, { status: 500 });
   }

@@ -92,14 +92,15 @@ export const reportCol = createModel("reports", async (item, include) => {
   if (include?.snapshots) item.snapshots = await reportSnapshotCol.findMany({ where: { reportId: item.id } });
   return item;
 });
-export const clientCol = createModel("clients", attachClientRelations);
+type RelationalEntity = Record<string, unknown> & { id: string | number; [key: string]: unknown };
+type IncludeConfig = Record<string, unknown> & { [key: string]: unknown };
 
 // Relational-aware extensions
-async function attachClientRelations(client: any, include: any) {
+async function attachClientRelations(client: RelationalEntity, include: IncludeConfig) {
   if (!client || !include) return client;
   if (include.properties) {
-    const propInclude = typeof include.properties === "object"
-      ? (include.properties.include || include.properties)
+    const propInclude = typeof include.properties === "object" && include.properties !== null
+      ? ((include.properties as Record<string, unknown>).include || include.properties)
       : { connections: true };
     client.properties = await websitePropertyCol.findMany({
       where: { clientId: client.id },
@@ -107,13 +108,13 @@ async function attachClientRelations(client: any, include: any) {
     });
   }
   if (include.deliveryEvents) {
-    const deliveryInclude = typeof include.deliveryEvents === "object"
-      ? (include.deliveryEvents.include || include.deliveryEvents)
+    const deliveryInclude = typeof include.deliveryEvents === "object" && include.deliveryEvents !== null
+      ? ((include.deliveryEvents as Record<string, unknown>).include || include.deliveryEvents)
       : undefined;
     client.deliveryEvents = await deliveryEventCol.findMany({
       where: { clientId: client.id },
       include: deliveryInclude,
-      orderBy: include.deliveryEvents?.orderBy
+      orderBy: (include.deliveryEvents as Record<string, unknown>)?.orderBy
     });
   }
   if (include.reports) {
@@ -137,19 +138,20 @@ async function attachClientRelations(client: any, include: any) {
   return client;
 }
 
-async function attachPropertyRelations(prop: any, include: any) {
+async function attachPropertyRelations(prop: RelationalEntity, include: IncludeConfig) {
   if (!prop || !include) return prop;
   if (include.client && prop.clientId) {
-    prop.client = await clientCol.findUnique({ where: { id: prop.clientId } });
+    prop.client = await clientCol.findUnique({ where: { id: prop.clientId as string | number } });
   }
   if (include.connections) {
     prop.connections = await integrationConnectionCol.findMany({ where: { propertyId: prop.id } });
   }
   if (include.snapshots) {
+    const snapshotInclude = (include.snapshots as Record<string, unknown>) || {};
     prop.snapshots = await analyticsSnapshotCol.findMany({
-      where: { propertyId: prop.id, ...(include.snapshots?.where || {}) },
-      orderBy: include.snapshots?.orderBy,
-      take: include.snapshots?.take,
+      where: { propertyId: prop.id, ...((snapshotInclude.where as Record<string, unknown>) || {}) },
+      orderBy: snapshotInclude.orderBy,
+      take: snapshotInclude.take as number | undefined,
     });
   }
   if (include.trackedKeywords) {
@@ -167,7 +169,7 @@ async function attachPropertyRelations(prop: any, include: any) {
   return prop;
 }
 
-const prisma = {
+const basePrisma = {
   user: userCol,
   client: clientCol,
   websiteProperty: websitePropertyCol,
@@ -200,11 +202,18 @@ const prisma = {
   contentItem: contentItemCol,
   contentBrief: contentBriefCol,
   contentDraft: contentDraftCol,
+};
 
-  $transaction: async (fn: (tx: any) => Promise<any>) => {
-    return fn(prisma);
+export type DatabaseClient = typeof basePrisma & {
+  $transaction: <R>(fn: (tx: typeof basePrisma) => Promise<R>) => Promise<R>;
+  $disconnect: () => Promise<void>;
+};
+
+const prisma: DatabaseClient = {
+  ...basePrisma,
+  $transaction: async <R>(fn: (tx: typeof basePrisma) => Promise<R>): Promise<R> => {
+    return fn(basePrisma);
   },
-
   $disconnect: async () => {
     // Connection pool handles disconnect automatically
   },

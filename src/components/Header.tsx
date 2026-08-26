@@ -8,8 +8,6 @@ import {
   Settings,
   ChevronDown,
   LogOut,
-  Layers,
-  User as UserIcon,
   Menu,
   X
 } from "lucide-react";
@@ -23,13 +21,20 @@ interface UserSession {
   name: string;
 }
 
+interface ActivityLogItem {
+  id: string | number;
+  action: string;
+  clientName?: string;
+  createdAt: string;
+}
+
 export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { error: toastError } = useToast();
   const [user, setUser] = useState<UserSession | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<ActivityLogItem[]>([]);
   const [notificationsLoaded, setNotificationsLoaded] = useState(false);
 
   // Fetch current user details on load
@@ -168,7 +173,7 @@ export default function Header() {
                 ) : notifications.length === 0 ? (
                   <div className={styles.notificationItem} style={{ textAlign: "center", color: "var(--text-muted)" }}>No recent activity.</div>
                 ) : (
-                  notifications.map((log: any) => {
+                  notifications.map((log) => {
                     const isConnect = log.action.toLowerCase().includes("connect");
                     const isArchive = log.action.toLowerCase().includes("archive");
                     const dotColor = isConnect ? "#3B82F6" : isArchive ? "#EF4444" : "#94A3B8";

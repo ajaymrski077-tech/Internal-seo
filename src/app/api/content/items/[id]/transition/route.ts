@@ -43,8 +43,9 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, item: updated });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Transition Content Status Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to transition status" }, { status: 400 });
+    return NextResponse.json({ error: errObj?.message || "Failed to transition status" }, { status: 400 });
   }
 }

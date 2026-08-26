@@ -110,8 +110,9 @@ export default function ReportsPage() {
       setReports(data.reports);
       setTotalReports(data.totalCount);
       setTotalPages(data.totalPages);
-    } catch (err: any) {
-      setPageError(err.message || "Failed to load reports ledger.");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setPageError(errObj?.message || "Failed to load reports ledger.");
     } finally {
       setLoading(false);
     }
@@ -277,7 +278,7 @@ export default function ReportsPage() {
     const pages = [];
     const maxVisible = 5;
     let start = Math.max(1, currentPage - 2);
-    let end = Math.min(totalPages, start + maxVisible - 1);
+    const end = Math.min(totalPages, start + maxVisible - 1);
     
     if (end - start < maxVisible - 1) {
       start = Math.max(1, end - maxVisible + 1);

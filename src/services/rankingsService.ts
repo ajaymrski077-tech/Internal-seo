@@ -333,7 +333,7 @@ export const getRankingsOverview = async (
   propertyId?: string | number,
   daysRange: number = 30
 ) => {
-  const where: any = { status: "ACTIVE" };
+  const where: Record<string, unknown> = { status: "ACTIVE" };
   if (clientId) where.clientId = clientId;
   if (propertyId) where.propertyId = propertyId;
 

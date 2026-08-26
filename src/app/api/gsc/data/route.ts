@@ -72,11 +72,12 @@ export async function GET(req: NextRequest) {
       }));
 
       return NextResponse.json({ data });
-    } catch (apiError: any) {
+    } catch (apiError: unknown) {
       console.error("GSC API Fetch Error:", apiError);
       return NextResponse.json({ error: "Failed to fetch data from Google Search Console. Check permissions." }, { status: 502 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("GSC Route Error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

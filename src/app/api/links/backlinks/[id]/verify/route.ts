@@ -48,13 +48,14 @@ export async function POST(
         "LINK_BACKLINK_VERIFICATION_FAILED",
         backlink.campaign.clientId,
         backlink.campaign.client.name,
-        { campaignId: backlink.campaignId, campaignName: backlink.campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain, status: result.status, error: (result as any).error || "No link found matching domain" }
+        { campaignId: backlink.campaignId, campaignName: backlink.campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain, status: result.status, error: result.error || "No link found matching domain" }
       );
     }
 
     return NextResponse.json(result);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Backlink verification trigger error:", error);
-    return NextResponse.json({ error: error.message || "Failed to execute link verification" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to execute link verification" }, { status: 500 });
   }
 }

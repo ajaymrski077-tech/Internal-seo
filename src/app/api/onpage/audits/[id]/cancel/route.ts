@@ -25,7 +25,8 @@ export async function POST(
 
     await cancelAudit(id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("SEO Audit cancel error:", error);
     return NextResponse.json({ error: "Failed to cancel SEO audit" }, { status: 500 });
   }

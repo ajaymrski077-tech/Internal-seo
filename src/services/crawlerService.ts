@@ -108,8 +108,9 @@ export async function validateHostSSRF(hostname: string): Promise<void> {
         throw new Error(`SSRF: Blocked request to private IP ${addr} for ${hostname}`);
       }
     }
-  } catch (err: any) {
-    if (err.message?.startsWith("SSRF")) throw err;
+  } catch (err: unknown) {
+    const errorObj = err as Error;
+    if (errorObj?.message?.startsWith("SSRF")) throw err;
     // DNS resolution failure — let fetch handle it
   }
 }
@@ -211,7 +212,7 @@ export function isPathAllowed(path: string, rules: RobotsRules): boolean {
 
 // ─── Sitemap Parser ────────────────────────────────────────────────
 
-export function parseSitemap(xml: string, baseDomain: string): string[] {
+export function parseSitemap(xml: string, _baseDomain?: string): string[] {
   const urls: string[] = [];
   const $ = cheerio.load(xml, { xmlMode: true });
 
@@ -330,7 +331,8 @@ async function fetchPage(
       redirectChain,
       depth: 0, // Set by caller
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorObj = err as Error;
     return {
       url,
       normalizedUrl: normalizeUrl(url) || url,
@@ -342,7 +344,7 @@ async function fetchPage(
       html: "",
       redirectChain: [],
       depth: 0,
-      error: err.name === "AbortError" ? "Request timed out" : err.message,
+      error: errorObj?.name === "AbortError" ? "Request timed out" : (errorObj?.message || "Unknown crawl error"),
     };
   }
 }

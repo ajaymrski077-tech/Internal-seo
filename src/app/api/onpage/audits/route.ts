@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
 
     const audits = await getAudits({ propertyId, status });
     return NextResponse.json({ audits });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("SEO Audits list error:", error);
     return NextResponse.json({ error: "Failed to fetch SEO audits" }, { status: 500 });
   }
@@ -54,8 +55,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true, auditId }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("SEO Audit create error:", error);
-    return NextResponse.json({ error: error.message || "Failed to start SEO audit" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to start SEO audit" }, { status: 500 });
   }
 }

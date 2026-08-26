@@ -23,7 +23,8 @@ export async function GET(
     });
 
     return NextResponse.json({ draft });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Get Content Draft Error:", error);
     return NextResponse.json({ error: "Failed to load content draft" }, { status: 500 });
   }
@@ -62,7 +63,8 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, draft });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Save Content Draft Error:", error);
     return NextResponse.json({ error: "Failed to save content draft" }, { status: 500 });
   }

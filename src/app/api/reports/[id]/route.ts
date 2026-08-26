@@ -24,9 +24,10 @@ export async function GET(
     }
 
     return NextResponse.json(report);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Report details API error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Internal server error" }, { status: 500 });
   }
 }
 
@@ -61,9 +62,10 @@ export async function PATCH(
     }, user.email);
 
     return NextResponse.json(report);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Report update API error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update report settings" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update report settings" }, { status: 500 });
   }
 }
 
@@ -86,8 +88,9 @@ export async function DELETE(
 
     await archiveReport(id, user.email);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Report delete API error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete report" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete report" }, { status: 500 });
   }
 }

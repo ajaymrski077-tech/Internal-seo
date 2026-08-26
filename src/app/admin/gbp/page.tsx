@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Globe, RefreshCw, AlertTriangle, ShieldCheck, MapPin, Phone, ExternalLink, Calendar, Plus, Navigation } from "lucide-react";
 import styles from "@/styles/SharedModule.module.css";
 
@@ -104,13 +105,13 @@ export default function GbpDashboard() {
           <MapPin style={{ fontSize: "48px", color: "#94A3B8", marginBottom: "16px", margin: "0 auto" }} size={48} />
           <h2 style={{ fontSize: "18px", fontWeight: "600", margin: 0 }}>No Locations Connected Yet</h2>
           <p style={{ color: "#64748B", margin: "8px 0 16px 0", fontSize: "13px" }}>Business Profile locations must be connected and mapped through the Client Workspace.</p>
-          <a
+          <Link
             href="/admin/clients"
             className={styles.btnPrimary}
             style={{ display: "inline-block", textDecoration: "none" }}
           >
             Go to Clients Workspace
-          </a>
+          </Link>
         </div>
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "20px" }}>

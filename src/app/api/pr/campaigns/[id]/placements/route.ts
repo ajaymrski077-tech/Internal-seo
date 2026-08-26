@@ -25,7 +25,8 @@ export async function GET(
     });
 
     return NextResponse.json({ placements });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Placements list error:", error);
     return NextResponse.json({ error: "Failed to fetch placements" }, { status: 500 });
   }
@@ -96,8 +97,9 @@ export async function POST(
     );
 
     return NextResponse.json(placement, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Placement create error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create placement record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create placement record" }, { status: 500 });
   }
 }

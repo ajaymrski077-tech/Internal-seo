@@ -34,7 +34,7 @@ export async function PATCH(
     const body = await req.json();
     const { domain, websiteName, websiteUrl, contactName, contactEmail, sourceType, relevance, authorityMetric, status, notes, followUpDate } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (domain !== undefined) data.domain = domain.trim().toLowerCase();
     if (websiteName !== undefined) data.websiteName = websiteName.trim();
     if (websiteUrl !== undefined) data.websiteUrl = websiteUrl.trim();
@@ -76,9 +76,10 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Opportunity update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update opportunity" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update opportunity" }, { status: 500 });
   }
 }
 
@@ -126,8 +127,9 @@ export async function DELETE(
     return NextResponse.json({ success: true });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Opportunity delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete opportunity" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete opportunity" }, { status: 500 });
   }
 }

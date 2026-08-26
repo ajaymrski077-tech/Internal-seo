@@ -55,8 +55,9 @@ export default function GscPropertyDetailPage({ params }: { params: Promise<{ pr
       }
       const json = await res.json();
       setData(json);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to load property details");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMessage(errObj?.message || "Failed to load property details");
       handleApiError(err, { 
         toast: { error: toastError },
         fallbackMessage: "Failed to load property details"

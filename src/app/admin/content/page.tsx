@@ -64,8 +64,8 @@ export default function ContentWorkflowDashboard() {
 
   // Dashboard Stats
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [upcoming, setUpcoming] = useState<any[]>([]);
-  const [recentPublish, setRecentPublish] = useState<any[]>([]);
+  const [upcoming, setUpcoming] = useState<ContentItem[]>([]);
+  const [recentPublish, setRecentPublish] = useState<ContentItem[]>([]);
 
   // Opportunities & Items
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -325,7 +325,7 @@ export default function ContentWorkflowDashboard() {
   const handleTransitionStatus = async (status: string) => {
     if (!selectedItem) return;
     try {
-      const payload: any = { newStatus: status };
+      const payload: Record<string, unknown> = { newStatus: status };
       if (status === "PUBLISHED") {
         payload.liveUrl = pubLiveUrl;
         payload.publishDate = new Date().toISOString();
@@ -408,18 +408,18 @@ export default function ContentWorkflowDashboard() {
       {/* Tabs Selector */}
       <div style={{ display: "flex", gap: "8px", borderBottom: "1px solid #E2E8F0", paddingBottom: "1px", marginBottom: "24px" }}>
         {[
-          { id: "dashboard", label: "Dashboard", icon: BookOpen },
-          { id: "ideas", label: "Ideas & Opportunities", icon: Lightbulb },
-          { id: "queue", label: "Briefs & Queue", icon: Clipboard },
-          { id: "drafts", label: "Drafts & Review", icon: PenTool },
-          { id: "library", label: "Published Library", icon: Globe }
+          { id: "dashboard" as const, label: "Dashboard", icon: BookOpen },
+          { id: "ideas" as const, label: "Ideas & Opportunities", icon: Lightbulb },
+          { id: "queue" as const, label: "Briefs & Queue", icon: Clipboard },
+          { id: "drafts" as const, label: "Drafts & Review", icon: PenTool },
+          { id: "library" as const, label: "Published Library", icon: Globe }
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -432,7 +432,7 @@ export default function ContentWorkflowDashboard() {
                 fontWeight: isSelected ? "600" : "500",
                 fontSize: "14px",
                 cursor: "pointer",
-                transition: "all 0.15s"
+                transition: "all 0.15s ease"
               }}
             >
               <Icon size={16} />
@@ -491,7 +491,7 @@ export default function ContentWorkflowDashboard() {
                             <strong style={{ fontSize: "13px", color: "#0F172A" }}>{item.title}</strong>
                             <span style={{ display: "block", fontSize: "11px", color: "#64748B", textTransform: "capitalize", marginTop: "2px" }}>Status: {item.status.toLowerCase()}</span>
                           </div>
-                          <span style={{ fontSize: "12px", color: "#475569", fontWeight: "600" }}>{new Date(item.publishDate).toLocaleDateString()}</span>
+                          <span style={{ fontSize: "12px", color: "#475569", fontWeight: "600" }}>{item.publishDate ? new Date(item.publishDate).toLocaleDateString() : "-"}</span>
                         </div>
                       ))}
                     </div>
@@ -519,7 +519,7 @@ export default function ContentWorkflowDashboard() {
                               </a>
                             )}
                           </div>
-                          <span style={{ fontSize: "12px", color: "#64748B" }}>{new Date(item.publishDate).toLocaleDateString()}</span>
+                          <span style={{ fontSize: "12px", color: "#64748B" }}>{item.publishDate ? new Date(item.publishDate).toLocaleDateString() : "-"}</span>
                         </div>
                       ))}
                     </div>

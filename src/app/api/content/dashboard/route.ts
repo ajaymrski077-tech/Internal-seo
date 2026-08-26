@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       PUBLISHED: 0
     };
 
-    allItems.forEach((item: any) => {
+    allItems.forEach((item: { status?: string }) => {
       if (item.status && counts[item.status] !== undefined) {
         counts[item.status]++;
       }
@@ -77,7 +77,8 @@ export async function GET(req: NextRequest) {
         publishDate: item.publishDate?.toISOString() || null
       }))
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Content Dashboard API Error:", error);
     return NextResponse.json({ error: "Failed to load content dashboard" }, { status: 500 });
   }

@@ -118,8 +118,9 @@ export default function OnPagePage() {
 
       setIsModalOpen(false);
       fetchAudits();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setStartingAudit(false);
     }

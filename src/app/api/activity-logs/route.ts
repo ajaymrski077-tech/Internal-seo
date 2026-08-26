@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const clientIdStr = searchParams.get("clientId");
     const limitStr = searchParams.get("limit");
 
-    const whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
     if (clientIdStr && clientIdStr !== "ALL") {
       whereClause.clientId = clientIdStr;
     }
@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ logs });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to load activity logs" }, { status: 500 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Failed to load activity logs" }, { status: 500 });
   }
 }

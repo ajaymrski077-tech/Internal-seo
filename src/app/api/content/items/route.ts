@@ -28,7 +28,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ items });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("List Content Items Error:", error);
     return NextResponse.json({ error: "Failed to load content items" }, { status: 500 });
   }
@@ -82,7 +83,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, item }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Create Content Item Error:", error);
     return NextResponse.json({ error: "Failed to create content item" }, { status: 500 });
   }

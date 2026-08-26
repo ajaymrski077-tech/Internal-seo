@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(pageStr, 10);
     const limit = parseInt(limitStr, 10);
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (clientIdStr && clientIdStr !== "All") {
       where.clientId = clientIdStr;
     }
@@ -52,8 +52,33 @@ export async function GET(req: NextRequest) {
       orderBy: { keyword: "asc" }
     });
 
+    interface KeywordSnap {
+      position?: number | null;
+      date?: Date;
+      clicks?: number;
+      impressions?: number;
+      ctr?: number;
+    }
+    interface KeywordWithSnapshots {
+      id: string | number;
+      keyword: string;
+      targetUrl?: string | null;
+      device?: string;
+      location?: string;
+      status?: string;
+      source?: string;
+      tags?: string[];
+      clientId: string | number;
+      propertyId: string | number;
+      createdAt?: Date;
+      updatedAt?: Date;
+      client?: { name: string };
+      property?: { domain: string };
+      snapshots?: KeywordSnap[];
+    }
+
     // Filter by positionGroup in memory to make it reliable with snapshot records
-    let filteredKeywords = keywords.map((kw: any) => {
+    let filteredKeywords = (keywords as unknown as KeywordWithSnapshots[]).map((kw) => {
       const currSnap = kw.snapshots ? kw.snapshots[0] : null;
       const prevSnap = kw.snapshots ? kw.snapshots[1] : null;
       
@@ -61,7 +86,7 @@ export async function GET(req: NextRequest) {
       const prevPos = prevSnap ? prevSnap.position : null;
 
       let positionChange: number | null = null;
-      if (currPos !== null && prevPos !== null) {
+      if (currPos !== null && currPos !== undefined && prevPos !== null && prevPos !== undefined) {
         positionChange = parseFloat((prevPos - currPos).toFixed(2));
       }
 
@@ -79,9 +104,9 @@ export async function GET(req: NextRequest) {
         currentPosition: currPos,
         previousPosition: prevPos,
         positionChange,
-        clicks: currSnap ? currSnap.clicks : 0,
-        impressions: currSnap ? currSnap.impressions : 0,
-        ctr: currSnap ? currSnap.ctr : 0,
+        clicks: currSnap?.clicks ?? 0,
+        impressions: currSnap?.impressions ?? 0,
+        ctr: currSnap?.ctr ?? 0,
         updatedAt: kw.updatedAt,
       };
     });
@@ -108,7 +133,8 @@ export async function GET(req: NextRequest) {
       page,
       totalPages: Math.ceil(totalCount / limit)
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("List tracked keywords error:", error);
     return NextResponse.json({ error: "Failed to load tracked keywords list" }, { status: 500 });
   }
@@ -146,8 +172,9 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json(tracked, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Create tracked keyword error:", error);
-    return NextResponse.json({ error: error.message || "Failed to track keyword" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to track keyword" }, { status: 500 });
   }
 }

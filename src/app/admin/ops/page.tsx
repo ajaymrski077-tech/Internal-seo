@@ -167,8 +167,9 @@ export default function OpsPage() {
 
       setIsModalOpen(false);
       fetchTasks();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
@@ -187,8 +188,9 @@ export default function OpsPage() {
       if (!res.ok) throw new Error("Failed to delete task.");
       setIsModalOpen(false);
       fetchTasks();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to delete task");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "Failed to delete task");
     } finally {
       setIsSaving(false);
     }

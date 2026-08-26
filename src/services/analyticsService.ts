@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { IntegrationConnectionRecord } from "@/types/db";
 
 export interface MetricsSummary {
   sessions: number;
@@ -47,12 +48,12 @@ export const getPortfolioTotals = async (
     where: includeArchived ? {} : { isArchived: false },
     select: { id: true }
   });
-  const clientIds = clients.map((c: any) => c.id);
+  const clientIds = clients.map((c: { id: string | number }) => c.id);
   const properties = await prisma.websiteProperty.findMany({
     where: { clientId: { in: clientIds } },
     select: { id: true }
   });
-  const propertyIds = properties.map((p: any) => p.id);
+  const propertyIds = properties.map((p: { id: string | number }) => p.id);
 
   if (propertyIds.length === 0) {
     return {
@@ -128,7 +129,7 @@ export const getClientTotals = async (
     where: { clientId: clientId.toString() },
     select: { id: true }
   });
-  const propertyIds = properties.map((p: any) => p.id);
+  const propertyIds = properties.map((p: { id: string | number }) => p.id);
 
   if (propertyIds.length === 0) {
     return {
@@ -202,7 +203,7 @@ export const getClientHistory = async (
     where: { clientId: clientId.toString() },
     select: { id: true }
   });
-  const propertyIds = properties.map((p: any) => p.id);
+  const propertyIds = properties.map((p: { id: string | number }) => p.id);
 
   const snapshots = propertyIds.length > 0 ? await prisma.analyticsSnapshot.findMany({
     where: {
@@ -258,8 +259,8 @@ export const syncPropertyData = async (propertyId: number, daysToSync: number = 
   });
   if (!property) throw new Error("Property not found");
 
-  const ga4Conn = property.connections.find((c: any) => c.provider === "GA4");
-  const gscConn = property.connections.find((c: any) => c.provider === "GSC");
+  const ga4Conn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+  const gscConn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
   if (!ga4Conn && !gscConn) return;
 

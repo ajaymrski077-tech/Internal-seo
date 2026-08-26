@@ -38,9 +38,10 @@ export default function ShareDashboardPage() {
         }
         const payload = await res.json();
         setData(payload);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errObj = err as Error;
         console.error("Shared dashboard load error:", err);
-        setError(err.message || "Failed to retrieve reporting dashboard. The link may have expired or access was revoked.");
+        setError(errObj?.message || "Failed to retrieve reporting dashboard. The link may have expired or access was revoked.");
       } finally {
         setLoading(false);
       }

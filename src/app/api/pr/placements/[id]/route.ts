@@ -34,7 +34,7 @@ export async function PATCH(
     const body = await req.json();
     const { publicationName, publicationUrl, articleTitle, articleUrl, publishedDate, targetUrl, linkType, notes, verified } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (publicationName !== undefined) data.publicationName = publicationName.trim();
     if (publicationUrl !== undefined) data.publicationUrl = publicationUrl?.trim() || null;
     if (articleTitle !== undefined) data.articleTitle = articleTitle.trim();
@@ -60,9 +60,10 @@ export async function PATCH(
     );
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Placement update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update placement record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update placement record" }, { status: 500 });
   }
 }
 
@@ -108,8 +109,9 @@ export async function DELETE(
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Placement delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete placement record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete placement record" }, { status: 500 });
   }
 }

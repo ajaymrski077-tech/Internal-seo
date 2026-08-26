@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     const clientId = searchParams.get("clientId") || "All";
     const search = searchParams.get("search") || "";
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (status !== "All") {
       where.status = status.toUpperCase();
@@ -43,7 +43,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ tasks });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Tasks load error:", error);
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
   }
@@ -82,8 +83,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(task, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Task create error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create task" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create task" }, { status: 500 });
   }
 }

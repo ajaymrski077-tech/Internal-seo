@@ -37,10 +37,11 @@ export async function GET(
 
     const properties = await listGa4Properties(connection.id);
     return NextResponse.json({ properties });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Discover GA4 Properties Error:", error);
     return NextResponse.json(
-      { properties: [], error: error.message || "Failed to list GA4 properties" },
+      { properties: [], error: errObj?.message || "Failed to list GA4 properties" },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@ import prisma from "@/lib/db";
 import { getPortfolioTotals, getClientTotals, getClientHistory, HistoryDataPoint, MetricDelta, getPreviousPeriodDates } from "./analyticsService";
 import { getClientDeliveries, DeliveryDetail } from "./deliveryService";
 import { getRankingsOverview } from "./rankingsService";
+import { IntegrationConnectionRecord } from "@/types/db";
 
 export interface ClientDashboardCard {
   id: string | number;
@@ -70,7 +71,7 @@ export const getDashboardData = async (
   const portfolio = await getPortfolioTotals(start, end, showArchived);
 
   // 2. Fetch clients with properties & connections (excluding token credentials)
-  const whereClause: any = {};
+  const whereClause: Record<string, unknown> = {};
   
   if (!showArchived) {
     whereClause.isArchived = false;
@@ -109,8 +110,8 @@ export const getDashboardData = async (
     },
   });
 
-  const clientIds = dbClients.map((c: any) => c.id);
-  const propertyIds = dbClients.flatMap((c: any) => (c.properties || []).map((p: any) => p.id));
+  const clientIds = dbClients.map((c: { id: string | number }) => c.id);
+  const propertyIds = dbClients.flatMap((c: { properties?: { id: string | number }[] }) => (c.properties || []).map((p: { id: string | number }) => p.id));
   const prevDates = getPreviousPeriodDates(start, end);
 
   // Bulk query all deliveries for matching clients
@@ -206,7 +207,7 @@ export const getDashboardData = async (
     
     const initials = client.name
       .split(" ")
-      .map((n: any) => n[0])
+      .map((n: string) => n[0])
       .join("")
       .slice(0, 2)
       .toUpperCase();
@@ -235,8 +236,8 @@ export const getDashboardData = async (
       continue;
     }
 
-    const ga4Conn = primaryProperty.connections?.find((c: any) => c.provider === "GA4");
-    const gscConn = primaryProperty.connections?.find((c: any) => c.provider === "GSC");
+    const ga4Conn = primaryProperty.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+    const gscConn = primaryProperty.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
     const ga4Status = ga4Conn ? ga4Conn.status : "DISCONNECTED";
     const gscStatus = gscConn ? gscConn.status : "DISCONNECTED";
@@ -410,8 +411,8 @@ export const getClientDashboardByShareToken = async (
   const { start, end } = parseRangeCode(range);
 
   // 1. Fetch client by shareToken
-  const client = (await prisma.client.findFirst({
-    where: { shareToken, isArchived: false } as any,
+  const client = await prisma.client.findFirst({
+    where: { shareToken, isArchived: false },
     include: {
       properties: {
         include: {
@@ -433,15 +434,15 @@ export const getClientDashboardByShareToken = async (
         },
       },
     },
-  })) as any;
+  });
 
   if (!client) return null;
 
   // Determine primary property
-  const primaryProperty = client.properties[0];
+  const primaryProperty = client.properties?.[0];
   
   // Generate initials
-  const initials = (client.name as string)
+  const initials = client.name
     .split(" ")
     .map((n: string) => n[0])
     .join("")
@@ -472,8 +473,8 @@ export const getClientDashboardByShareToken = async (
   }
 
   // Connections check
-  const ga4Conn = (primaryProperty.connections as any[]).find((c: any) => c.provider === "GA4");
-  const gscConn = (primaryProperty.connections as any[]).find((c: any) => c.provider === "GSC");
+  const ga4Conn = primaryProperty.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+  const gscConn = primaryProperty.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
   const ga4Status = ga4Conn ? ga4Conn.status : "DISCONNECTED";
   const gscStatus = gscConn ? gscConn.status : "DISCONNECTED";
@@ -554,14 +555,44 @@ export const getClientDashboardByShareToken = async (
 
 
 
+export interface ClientWorkspacePayload {
+  client: Record<string, unknown>;
+  metrics: MetricDelta | null;
+  history: {
+    current: HistoryDataPoint[];
+    previous: HistoryDataPoint[];
+  };
+  deliveries: DeliveryDetail[];
+  prStats: Record<string, unknown>;
+  linkStats: Record<string, unknown>;
+  rankingStats?: Record<string, unknown>;
+  onpageStats?: Record<string, unknown> | null;
+  gbpStats?: Record<string, unknown> | null;
+  latestAudit: Record<string, unknown> | null;
+  gbpLocation: Record<string, unknown> | null;
+  activityLogs: Record<string, unknown>[];
+  hasGA4: boolean;
+  hasGSC: boolean;
+  hasGBP: boolean;
+  ga4Status: string;
+  gscStatus: string;
+  gbpStatus: string;
+  ga4Error: string | null;
+  gscError: string | null;
+  gbpError: string | null;
+  lastSyncTime: string | null;
+  domain: string;
+  initials: string;
+}
+
 export const getClientWorkspaceData = async (
   clientId: string | number,
   range: string = "30d"
-): Promise<any | null> => {
+): Promise<ClientWorkspacePayload | null> => {
   const { start, end } = parseRangeCode(range);
 
   // 1. Fetch client with property & connections
-  const client = (await prisma.client.findFirst({
+  const client = await prisma.client.findFirst({
     where: { id: clientId },
     include: {
       properties: {
@@ -579,12 +610,12 @@ export const getClientWorkspaceData = async (
         },
       },
     },
-  })) as any;
+  });
 
   if (!client) return null;
 
   // Determine primary property
-  const primaryProperty = client.properties[0];
+  const primaryProperty = client.properties?.[0];
   
   // Generate initials
   const initials = client.name
@@ -594,9 +625,9 @@ export const getClientWorkspaceData = async (
     .slice(0, 2)
     .toUpperCase();
 
-  const ga4Conn = (primaryProperty?.connections as any[] | undefined)?.find((c: any) => c.provider === "GA4");
-  const gscConn = (primaryProperty?.connections as any[] | undefined)?.find((c: any) => c.provider === "GSC");
-  const gbpConn = (primaryProperty?.connections as any[] | undefined)?.find((c: any) => c.provider === "GBP");
+  const ga4Conn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+  const gscConn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
+  const gbpConn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GBP");
 
   const ga4Status = ga4Conn ? ga4Conn.status : "DISCONNECTED";
   const gscStatus = gscConn ? gscConn.status : "DISCONNECTED";
@@ -656,7 +687,7 @@ export const getClientWorkspaceData = async (
   }
 
   // Fetch recent activity logs
-  const activityLogs = await (prisma as any).activityLog.findMany({
+  const activityLogs = await prisma.activityLog.findMany({
     where: { clientId: client.id },
     orderBy: { createdAt: "desc" },
     take: 30,
@@ -667,9 +698,25 @@ export const getClientWorkspaceData = async (
     prisma.prCampaign.findMany({ where: { clientId: client.id }, select: { id: true } }),
     prisma.linkCampaign.findMany({ where: { clientId: client.id }, select: { id: true } }),
   ]);
-  const prCampaignIds = prCampaignsList.map((c: any) => c.id);
-  const linkCampaignIds = linkCampaignsList.map((c: any) => c.id);
-  const propertyIds = (client.properties || []).map((p: any) => p.id);
+  const prCampaignIds = prCampaignsList.map((c) => c.id);
+  const linkCampaignIds = linkCampaignsList.map((c) => c.id);
+  interface PropertyItem {
+    id: string | number;
+    domain: string;
+    name?: string;
+    connections?: Array<{
+      id: string | number;
+      provider: string;
+      status: string;
+      syncStatus?: string;
+      syncError?: string | null;
+      lastSyncTime?: string | Date | null;
+      externalId?: string | null;
+      conversionEventName?: string | null;
+    }>;
+  }
+
+  const propertyIds = (client.properties || []).map((p: PropertyItem) => p.id);
 
   // Fetch client-specific Digital PR stats
   const [activePrCampaigns, prOutreachCount, prPlacementsCount, contactedCount, responsesCount] = await Promise.all([
@@ -716,14 +763,14 @@ export const getClientWorkspaceData = async (
       shareToken: client.shareToken,
       managerName: client.managerName,
       notes: client.notes,
-      startDate: client.startDate?.toISOString() || null,
+      startDate: client.startDate ? new Date(client.startDate).toISOString() : null,
       createdAt: client.createdAt ? new Date(client.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: client.updatedAt ? new Date(client.updatedAt).toISOString() : new Date().toISOString(),
-      properties: ((client.properties as any[]) || []).map((p: any) => ({
+      properties: (client.properties || []).map((p: PropertyItem) => ({
         id: p.id,
         domain: p.domain,
         name: p.name,
-        connections: ((p.connections as any[]) || []).map((c: any) => ({
+        connections: (p.connections || []).map((c) => ({
           id: c.id,
           provider: c.provider,
           status: c.status,
@@ -737,6 +784,11 @@ export const getClientWorkspaceData = async (
     },
     domain: primaryProperty ? primaryProperty.domain : "no-website.com",
     initials,
+    hasGA4: !!ga4Conn,
+    hasGSC: !!gscConn,
+    hasGBP: !!gbpConn,
+    latestAudit,
+    gbpLocation,
     ga4Status,
     gscStatus,
     gbpStatus,

@@ -30,8 +30,9 @@ export async function GET(
     }
 
     return NextResponse.json(ticket);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to load ticket" }, { status: 500 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Failed to load ticket" }, { status: 500 });
   }
 }
 
@@ -54,7 +55,7 @@ export async function PATCH(
     const body = await req.json();
     const { subject, clientId, fromName, status, priority, assignedTo } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (subject !== undefined) data.subject = subject.trim();
     if (clientId !== undefined) data.clientId = clientId ? clientId.toString() : undefined;
     if (fromName !== undefined) data.fromName = fromName.trim();
@@ -71,9 +72,10 @@ export async function PATCH(
     });
 
     return NextResponse.json(ticket);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Ticket update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update ticket" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update ticket" }, { status: 500 });
   }
 }
 
@@ -98,8 +100,9 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Ticket delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete ticket" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete ticket" }, { status: 500 });
   }
 }

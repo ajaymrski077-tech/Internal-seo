@@ -22,7 +22,8 @@ export async function POST(
     const client = await regenerateShareTokenRecord(user.email, id);
 
     return NextResponse.json({ shareToken: client.shareToken });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Server error" }, { status: 400 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Server error" }, { status: 400 });
   }
 }

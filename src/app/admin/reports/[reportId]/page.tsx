@@ -128,8 +128,9 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
         setEditCustomStart(data.startDate.split("T")[0]);
         setEditCustomEnd(data.endDate.split("T")[0]);
       }
-    } catch (err: any) {
-      setPageError(err.message || "Failed to load report details.");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setPageError(errObj?.message || "Failed to load report details.");
     } finally {
       setLoading(false);
     }
@@ -167,9 +168,34 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
   const hasSnapshot = report.snapshots && report.snapshots.length > 0;
   const snapshot = hasSnapshot ? report.snapshots[0] : null;
 
-  let metricsData: any = null;
-  let historyData: any = null;
-  let deliveriesData: any[] = [];
+  interface HistoryPoint {
+    date: string;
+    sessions?: number;
+    organicTraffic?: number;
+    conversions?: number;
+  }
+
+  interface SnapshotMetrics {
+    sessions?: number;
+    organicTraffic?: number;
+    conversions?: number;
+    sessionsChange?: number;
+    organicTrafficChange?: number;
+    conversionsChange?: number;
+  }
+
+  interface SnapshotDelivery {
+    id: string | number;
+    type: string;
+    date: string;
+    description: string;
+    linkDetails?: { url?: string; targetUrl?: string; domainAuthority?: number };
+    contentDetails?: { title?: string; url?: string; wordCount?: number };
+  }
+
+  let metricsData: SnapshotMetrics | null = null;
+  let historyData: { current?: HistoryPoint[]; previous?: HistoryPoint[] } | null = null;
+  let deliveriesData: SnapshotDelivery[] = [];
   let sectionsList: string[] = [];
 
   try {
@@ -305,8 +331,8 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
       );
     }
 
-    const currentValues = currentTimeline.map((h: any) => h[metricKey]);
-    const prevValues = prevTimeline.map((h: any) => h[metricKey]);
+    const currentValues = currentTimeline.map((h) => (h[metricKey] as number) || 0);
+    const prevValues = prevTimeline.map((h) => (h[metricKey] as number) || 0);
     const maxVal = Math.max(...currentValues, ...prevValues, 100);
     const minVal = 0;
     
@@ -315,7 +341,7 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
     const paddingY = 15;
     const stepX = width / (currentTimeline.length - 1);
 
-    const getPointsStr = (dataset: any[]) => {
+    const getPointsStr = (dataset: HistoryPoint[]) => {
       return dataset.map((pt, idx) => {
         const val = pt[metricKey] || 0;
         const x = idx * stepX;
@@ -477,9 +503,9 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
                   <span className={styles.summaryValue}>{metricsData.sessions?.toLocaleString() || 0}</span>
                   {report.comparisonRange !== "NONE" && (
                     <div className={styles.summaryDeltaRow}>
-                      <span className={`${styles.deltaBadge} ${metricsData.sessionsChange >= 0 ? styles.positive : styles.negative}`}>
-                        {metricsData.sessionsChange >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                        {metricsData.sessionsChange >= 0 ? "+" : ""}{metricsData.sessionsChange}%
+                      <span className={`${styles.deltaBadge} ${(metricsData.sessionsChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                        {(metricsData.sessionsChange ?? 0) >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        {(metricsData.sessionsChange ?? 0) >= 0 ? "+" : ""}{metricsData.sessionsChange ?? 0}%
                       </span>
                       <span className={styles.deltaLabel}>vs comparison period</span>
                     </div>
@@ -492,9 +518,9 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
                   <span className={styles.summaryValue}>{metricsData.organicTraffic?.toLocaleString() || 0}</span>
                   {report.comparisonRange !== "NONE" && (
                     <div className={styles.summaryDeltaRow}>
-                      <span className={`${styles.deltaBadge} ${metricsData.organicTrafficChange >= 0 ? styles.positive : styles.negative}`}>
-                        {metricsData.organicTrafficChange >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                        {metricsData.organicTrafficChange >= 0 ? "+" : ""}{metricsData.organicTrafficChange}%
+                      <span className={`${styles.deltaBadge} ${(metricsData.organicTrafficChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                        {(metricsData.organicTrafficChange ?? 0) >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        {(metricsData.organicTrafficChange ?? 0) >= 0 ? "+" : ""}{metricsData.organicTrafficChange ?? 0}%
                       </span>
                       <span className={styles.deltaLabel}>vs comparison period</span>
                     </div>
@@ -507,9 +533,9 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
                   <span className={styles.summaryValue}>{metricsData.conversions?.toLocaleString() || 0}</span>
                   {report.comparisonRange !== "NONE" && (
                     <div className={styles.summaryDeltaRow}>
-                      <span className={`${styles.deltaBadge} ${metricsData.conversionsChange >= 0 ? styles.positive : styles.negative}`}>
-                        {metricsData.conversionsChange >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                        {metricsData.conversionsChange >= 0 ? "+" : ""}{metricsData.conversionsChange}%
+                      <span className={`${styles.deltaBadge} ${(metricsData.conversionsChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                        {(metricsData.conversionsChange ?? 0) >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                        {(metricsData.conversionsChange ?? 0) >= 0 ? "+" : ""}{metricsData.conversionsChange ?? 0}%
                       </span>
                       <span className={styles.deltaLabel}>vs comparison period</span>
                     </div>
@@ -559,7 +585,7 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
                       </tr>
                     </thead>
                     <tbody>
-                      {deliveriesData.map((d: any) => (
+                      {deliveriesData.map((d) => (
                         <tr key={d.id}>
                           <td>{new Date(d.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</td>
                           <td>
@@ -572,7 +598,7 @@ export default function ReportDetailsPage({ params }: { params: Promise<{ report
                           <td>
                             {d.type === "BACKLINK" && d.linkDetails && (
                               <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                DA: {d.linkDetails.domainAuthority} | Target: {d.linkDetails.targetUrl.replace(/^(https?:\/\/)?(www\.)?/, "").slice(0, 30)}
+                                DA: {d.linkDetails.domainAuthority} | Target: {(d.linkDetails.targetUrl || d.linkDetails.url || "").replace(/^(https?:\/\/)?(www\.)?/, "").slice(0, 30)}
                               </span>
                             )}
                             {d.type === "CONTENT" && d.contentDetails && (

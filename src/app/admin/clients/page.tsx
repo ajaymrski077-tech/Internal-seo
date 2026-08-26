@@ -99,8 +99,9 @@ export default function ClientsPage() {
       const data = await res.json();
       setClients(data.clients);
       setTotalCount(data.totalCount);
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setError(errObj?.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -321,7 +322,7 @@ export default function ClientsPage() {
     const maxVisiblePages = 5;
     
     let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
     
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);

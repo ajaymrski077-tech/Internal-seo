@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
 
     const overview = await getLinkOverview(clientId);
     return NextResponse.json(overview);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link overview load error:", error);
     return NextResponse.json({ error: "Failed to load link building metrics" }, { status: 500 });
   }

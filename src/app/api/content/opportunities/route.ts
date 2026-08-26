@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
     const opportunities = await scanContentOpportunities(propertyId);
 
     return NextResponse.json({ opportunities });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Content Opportunities API Error:", error);
     return NextResponse.json({ error: "Failed to load content opportunities" }, { status: 500 });
   }

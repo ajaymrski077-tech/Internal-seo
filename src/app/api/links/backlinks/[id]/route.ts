@@ -34,7 +34,7 @@ export async function PATCH(
     const body = await req.json();
     const { sourceDomain, sourceUrl, targetUrl, anchorText, linkType, notes, status, acquiredDate } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (sourceDomain !== undefined) data.sourceDomain = sourceDomain.trim().toLowerCase();
     if (sourceUrl !== undefined) data.sourceUrl = sourceUrl.trim();
     if (targetUrl !== undefined) data.targetUrl = targetUrl.trim();
@@ -59,9 +59,10 @@ export async function PATCH(
     );
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Backlink update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update backlink record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update backlink record" }, { status: 500 });
   }
 }
 
@@ -107,8 +108,9 @@ export async function DELETE(
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Backlink delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete backlink record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete backlink record" }, { status: 500 });
   }
 }

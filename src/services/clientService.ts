@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { IntegrationConnectionRecord } from "@/types/db";
 import crypto from "crypto";
 
 export interface ClientListItem {
@@ -59,7 +60,7 @@ export const getClientsList = async (params: {
   const pageSize = params.pageSize || 10;
   const skip = (page - 1) * pageSize;
 
-  const whereClause: any = {};
+  const whereClause: Record<string, unknown> = {};
 
   // 1. Archive filters
   const archivedFilter = params.archived || "ACTIVE_ONLY";
@@ -125,7 +126,7 @@ export const getClientsList = async (params: {
   }
 
   // 5. Sorting configurations
-  let orderBy: any = { name: "asc" };
+  let orderBy: Record<string, "asc" | "desc"> = { name: "asc" };
   const sort = params.sort || "name_asc";
   if (sort === "name_desc") orderBy = { name: "desc" };
   else if (sort === "newest") orderBy = { createdAt: "desc" };
@@ -158,12 +159,12 @@ export const getClientsList = async (params: {
   ]);
 
   // Map to List Item interfaces
-  const clients: ClientListItem[] = dbClients.map((client: any) => {
+  const clients: ClientListItem[] = dbClients.map((client) => {
     const primaryProperty = client.properties?.[0];
     const primaryDomain = primaryProperty ? primaryProperty.domain : "no-website.com";
 
-    const ga4Conn = primaryProperty?.connections?.find((c: any) => c.provider === "GA4");
-    const gscConn = primaryProperty?.connections?.find((c: any) => c.provider === "GSC");
+    const ga4Conn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+    const gscConn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
     const ga4Status = ga4Conn ? ga4Conn.status : "DISCONNECTED";
     const gscStatus = gscConn ? gscConn.status : "DISCONNECTED";
@@ -292,7 +293,7 @@ export const updateClientDetails = async (
     startDate?: string | null;
   }
 ) => {
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) {
     if (!data.name.trim()) throw new Error("Client name cannot be empty");
     updateData.name = data.name.trim();

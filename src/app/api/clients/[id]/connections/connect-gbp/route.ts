@@ -98,8 +98,9 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, location: gbpLocation });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Connect GBP Location Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to connect GBP location" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to connect GBP location" }, { status: 500 });
   }
 }

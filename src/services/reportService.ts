@@ -127,8 +127,7 @@ export const createReport = async (input: ReportConfigInput, actorEmail: string)
 
   // Create report
   const report = await prisma.$transaction(async (tx) => {
-    const dbTx = tx as any;
-    const record = await dbTx.report.create({
+    const record = await tx.report.create({
       data: {
         clientId,
         propertyId,
@@ -144,7 +143,7 @@ export const createReport = async (input: ReportConfigInput, actorEmail: string)
     });
 
     // Log Activity
-    await dbTx.activityLog.create({
+    await tx.activityLog.create({
       data: {
         actorEmail,
         action: "REPORT_CREATED",

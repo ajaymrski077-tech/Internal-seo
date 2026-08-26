@@ -34,17 +34,16 @@ export async function POST(
 
     // Delete location mappings (cascade deletes snapshots automatically)
     await prisma.$transaction(async (tx) => {
-      const dbTx = tx as any;
-      await dbTx.gbpLocation.delete({ where: { id } });
+      await tx.gbpLocation.delete({ where: { id } });
 
       // Clean GbpConnection externalId
-      await dbTx.integrationConnection.updateMany({
+      await tx.integrationConnection.updateMany({
         where: { propertyId: loc.propertyId, provider: "GBP" },
         data: { externalId: null }
       });
 
       // Log activity
-      await dbTx.activityLog.create({
+      await tx.activityLog.create({
         data: {
           actorEmail: user.email,
           action: "GBP_LOCATION_DISCONNECTED",
@@ -56,7 +55,8 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Disconnect GBP Location Error:", error);
     return NextResponse.json({ error: "Failed to disconnect GBP location" }, { status: 500 });
   }

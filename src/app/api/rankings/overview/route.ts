@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
 
     const overview = await getRankingsOverview(clientId, propertyId, isNaN(daysRange) ? 30 : daysRange);
     return NextResponse.json(overview);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Rankings overview load error:", error);
     return NextResponse.json({ error: "Failed to load rankings overview" }, { status: 500 });
   }

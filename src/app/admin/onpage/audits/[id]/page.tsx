@@ -160,7 +160,7 @@ export default function AuditDetailPage() {
       const res = await fetch(`/api/onpage/audits/${auditId}/issues?limit=100`);
       if (res.ok) {
         const data = await res.json();
-        const filtered = (data.issues || []).filter((i: any) => i.url === page.url);
+        const filtered = (data.issues || []).filter((i: { url?: string }) => i.url === page.url);
         setSelectedPageIssues(filtered);
       }
     } catch (err) {

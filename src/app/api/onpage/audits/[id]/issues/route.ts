@@ -31,7 +31,8 @@ export async function GET(
 
     const data = await getAuditIssues(id, { page, limit, severity, type });
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("SEO Audit issues load error:", error);
     return NextResponse.json({ error: "Failed to load audit issues" }, { status: 500 });
   }

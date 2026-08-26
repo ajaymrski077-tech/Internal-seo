@@ -33,9 +33,10 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(payload);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Reports API load error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Internal server error" }, { status: 500 });
   }
 }
 
@@ -70,14 +71,15 @@ export async function POST(req: NextRequest) {
     // 2. Immediately trigger snapshot generation in the background/sync
     try {
       await generateReportSnapshot(report.id, user.email);
-    } catch (genError: any) {
+    } catch (genError: unknown) {
       console.error("Auto snapshot generation failed:", genError);
       // Even if generation failed, the config record was created, so return the record
     }
 
     return NextResponse.json({ success: true, reportId: report.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Report creation API error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create report" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create report" }, { status: 500 });
   }
 }

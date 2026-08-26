@@ -21,8 +21,9 @@ export async function POST(
 
     const report = await regenerateReportShareToken(id, user.email);
     return NextResponse.json({ success: true, shareToken: report.shareToken });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Report share token regeneration API error:", error);
-    return NextResponse.json({ error: error.message || "Failed to regenerate share token" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to regenerate share token" }, { status: 500 });
   }
 }

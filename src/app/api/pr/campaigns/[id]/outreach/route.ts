@@ -29,7 +29,8 @@ export async function GET(
     });
 
     return NextResponse.json({ outreach });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Outreach list error:", error);
     return NextResponse.json({ error: "Failed to fetch outreach records" }, { status: 500 });
   }
@@ -142,8 +143,9 @@ export async function POST(
     );
 
     return NextResponse.json(outreach, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Outreach create error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create outreach record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create outreach record" }, { status: 500 });
   }
 }

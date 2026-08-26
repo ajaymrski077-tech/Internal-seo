@@ -19,8 +19,9 @@ export async function GET(req: NextRequest) {
   try {
     const data = await getDashboardData(search, range, showArchived, sort);
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Dashboard API Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to load dashboard data" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to load dashboard data" }, { status: 500 });
   }
 }

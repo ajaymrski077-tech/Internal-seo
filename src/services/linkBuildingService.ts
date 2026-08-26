@@ -191,7 +191,7 @@ export const getCampaigns = async (filters: {
   status?: string;
   priority?: string;
 }) => {
-  const where: any = {};
+  const where: Record<string, unknown> = {};
 
   if (filters.clientId) {
     where.clientId = filters.clientId;
@@ -422,7 +422,7 @@ export const logLinkActivity = async (
   action: string,
   clientId: string | number,
   clientName: string,
-  metadata: any
+  metadata: Record<string, unknown>
 ) => {
   try {
     await prisma.activityLog.create({

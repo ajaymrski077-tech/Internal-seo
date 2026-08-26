@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Calendar, Link as LinkIcon, FileText, CheckCircle, RefreshCw } from "lucide-react";
+import { X } from "lucide-react";
 import styles from "@/styles/ClientModal.module.css";
 import { useToast } from "@/components/ToastContext";
 import { handleApiError } from "@/lib/apiUtils";

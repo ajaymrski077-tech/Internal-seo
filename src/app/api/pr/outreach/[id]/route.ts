@@ -34,7 +34,7 @@ export async function PATCH(
     const body = await req.json();
     const { outreachStatus, sentAt, followUpDate, respondedAt, notes, contactName, contactEmail } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (outreachStatus !== undefined) data.outreachStatus = outreachStatus.toUpperCase();
     if (sentAt !== undefined) data.sentAt = sentAt ? new Date(sentAt) : null;
     if (followUpDate !== undefined) data.followUpDate = followUpDate ? new Date(followUpDate) : null;
@@ -71,9 +71,10 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Outreach update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update outreach record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update outreach record" }, { status: 500 });
   }
 }
 
@@ -119,8 +120,9 @@ export async function DELETE(
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Outreach delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete outreach record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete outreach record" }, { status: 500 });
   }
 }

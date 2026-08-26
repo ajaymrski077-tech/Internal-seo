@@ -38,10 +38,10 @@ export async function GET(
     }
 
     // Sanitize connections to prevent token leakage
-    const sanitizedProperties = client.properties.map((p: any) => ({
+    const sanitizedProperties = (client.properties || []).map((p: { connections?: Array<Record<string, unknown>> }) => ({
       ...p,
-      connections: p.connections.map((c: any) => {
-        const { accessToken, refreshToken, ...rest } = c;
+      connections: (p.connections || []).map((c) => {
+        const { accessToken: _a, refreshToken: _r, ...rest } = c;
         return rest;
       }),
     }));
@@ -50,8 +50,9 @@ export async function GET(
       ...client,
       properties: sanitizedProperties,
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Server error" }, { status: 500 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Server error" }, { status: 500 });
   }
 }
 
@@ -94,7 +95,8 @@ export async function PATCH(
     }
 
     return NextResponse.json(client);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Server error" }, { status: 400 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Server error" }, { status: 400 });
   }
 }

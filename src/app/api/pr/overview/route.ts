@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
 
     const overview = await getPrOverview(clientId);
     return NextResponse.json(overview);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("PR Overview fetch error:", error);
     return NextResponse.json({ error: "Failed to load PR overview stats" }, { status: 500 });
   }

@@ -53,8 +53,9 @@ export default function AdminDashboard() {
       const payload = await res.json();
       setData(payload);
       setError("");
-    } catch (err: any) {
-      setError(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setError(errObj?.message || "An error occurred");
     } finally {
       setLoading(false);
     }

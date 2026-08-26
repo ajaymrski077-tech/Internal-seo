@@ -3,7 +3,10 @@ import { SignJWT, jwtVerify } from "jose";
 const SESSION_EXPIRY = "7d";
 
 function getSecretKey(): Uint8Array {
-  const secret = process.env.SESSION_SECRET || "internal_seo_session_secret_key_9f8e7d6c5b4a3210987654321fedcba";
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    throw new Error("SESSION_SECRET environment variable is required and not set.");
+  }
   return new TextEncoder().encode(secret);
 }
 

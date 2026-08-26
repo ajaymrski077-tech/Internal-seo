@@ -40,7 +40,8 @@ export async function POST(
       status: updatedLoc?.syncStatus,
       error: updatedLoc?.syncError
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Sync GBP Location error:", error);
     return NextResponse.json({ error: "Failed to sync GBP data" }, { status: 500 });
   }

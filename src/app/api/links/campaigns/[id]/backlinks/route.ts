@@ -26,7 +26,8 @@ export async function GET(
     });
 
     return NextResponse.json({ backlinks });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Backlinks list error:", error);
     return NextResponse.json({ error: "Failed to fetch backlinks list" }, { status: 500 });
   }
@@ -99,8 +100,9 @@ export async function POST(
     );
 
     return NextResponse.json(backlink, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Backlink create error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create backlink record" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create backlink record" }, { status: 500 });
   }
 }

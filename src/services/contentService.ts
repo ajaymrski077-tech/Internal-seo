@@ -59,7 +59,7 @@ export async function transitionContentStatus(
   itemId: string | number,
   newStatus: string,
   actorEmail: string
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   const item = await prisma.contentItem.findUnique({
     where: { id: itemId },
     include: { property: { select: { clientId: true, client: { select: { name: true } } } } }

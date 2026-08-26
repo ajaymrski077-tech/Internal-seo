@@ -174,8 +174,9 @@ export default function PRDashboardPage() {
       setIsModalOpen(false);
       fetchCampaigns();
       fetchOverview(clientFilter);
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }

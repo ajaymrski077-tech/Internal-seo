@@ -64,7 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
 
     const brandName = property.client.name.toLowerCase().split(" ")[0];
     
-    let dimensionFilterGroups: any = undefined;
+    let dimensionFilterGroups: Array<{ filters: Array<{ dimension: string; operator: string; expression: string }> }> | undefined = undefined;
     if (brandFilter === "branded") {
       dimensionFilterGroups = [{ filters: [{ dimension: "query", operator: "contains", expression: brandName }] }];
     } else if (brandFilter === "non-branded") {
@@ -78,52 +78,105 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
       }
       const gscClient = getGscClient(gscConn.id, accessToken, refreshToken || undefined);
       
-      const [timeSeriesRes, prevTimeSeriesRes, pagesRes, queriesRes, cannibalizationRes, prevPagesRes] = await Promise.all([
+      const [totalsRes, prevTotalsRes, datesRes, pagesRes, queriesRes, cannibalizationRes, prevPagesRes] = await Promise.all([
         gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: { startDate: startStr, endDate: endStr, dimensions: ["date"], dimensionFilterGroups }
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: startStr,
+            endDate: endStr,
+            dimensionFilterGroups,
+          }
         }),
         gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: { startDate: prevStartStr, endDate: prevEndStr, dimensions: ["date"], dimensionFilterGroups }
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: prevStartStr,
+            endDate: prevEndStr,
+            dimensionFilterGroups,
+          }
         }),
         gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: { startDate: startStr, endDate: endStr, dimensions: ["page"], rowLimit: 50, dimensionFilterGroups }
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: startStr,
+            endDate: endStr,
+            dimensions: ["date"],
+            dimensionFilterGroups,
+          }
         }),
         gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: { startDate: startStr, endDate: endStr, dimensions: ["query"], rowLimit: 200, dimensionFilterGroups }
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: startStr,
+            endDate: endStr,
+            dimensions: ["page"],
+            dimensionFilterGroups,
+            rowLimit: 25
+          }
         }),
         gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: { startDate: startStr, endDate: endStr, dimensions: ["query", "page"], rowLimit: 500, dimensionFilterGroups }
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: startStr,
+            endDate: endStr,
+            dimensions: ["query"],
+            dimensionFilterGroups,
+            rowLimit: 25
+          }
         }),
         gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: { startDate: prevStartStr, endDate: prevEndStr, dimensions: ["page"], rowLimit: 50, dimensionFilterGroups }
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: startStr,
+            endDate: endStr,
+            dimensions: ["query", "page"],
+            dimensionFilterGroups,
+            rowLimit: 1000
+          }
+        }),
+        gscClient.searchanalytics.query({
+          siteUrl: gscConn.externalId!,
+          requestBody: {
+            startDate: prevStartStr,
+            endDate: prevEndStr,
+            dimensions: ["page"],
+            dimensionFilterGroups,
+            rowLimit: 50
+          }
         })
       ]);
 
-      const chartData = (timeSeriesRes.data.rows || []).map(r => ({
+      const totalsRow = totalsRes.data.rows?.[0] || { clicks: 0, impressions: 0, ctr: 0, position: 0 };
+      const prevTotalsRow = prevTotalsRes.data.rows?.[0] || { clicks: 0, impressions: 0, ctr: 0, position: 0 };
+
+      const clicks = totalsRow.clicks || 0;
+      const impressions = totalsRow.impressions || 0;
+      const ctr = (totalsRow.ctr || 0) * 100;
+      const avgPosition = totalsRow.position || 0;
+
+      const prevClicks = prevTotalsRow.clicks || 0;
+      const prevImpressions = prevTotalsRow.impressions || 0;
+      const prevCtr = (prevTotalsRow.ctr || 0) * 100;
+      const prevAvgPosition = prevTotalsRow.position || 0;
+
+      const clicksChange = prevClicks === 0 ? 0 : Math.round(((clicks - prevClicks) / prevClicks) * 100);
+      const impressionsChange = prevImpressions === 0 ? 0 : Math.round(((impressions - prevImpressions) / prevImpressions) * 100);
+      const ctrChange = prevCtr === 0 ? 0 : Number((ctr - prevCtr).toFixed(2));
+      const positionChange = prevAvgPosition === 0 ? 0 : Number((prevAvgPosition - avgPosition).toFixed(1)); // inverted
+
+      const chartData = (datesRes.data.rows || []).map(r => ({
         date: r.keys?.[0] || "",
         clicks: r.clicks || 0,
         impressions: r.impressions || 0,
-        ctr: (r.ctr || 0) * 100,
-        position: r.position || 0,
-      }));
-      
-      const prevChartData = (prevTimeSeriesRes.data.rows || []).map(r => ({
-        clicks: r.clicks || 0,
-        impressions: r.impressions || 0,
-        position: r.position || 0,
+        ctr: ((r.ctr || 0) * 100).toFixed(2),
+        position: (r.position || 0).toFixed(1),
       }));
 
       const topPages = (pagesRes.data.rows || []).map(r => ({
         page: (r.keys?.[0] || "").replace(gscConn.externalId!, ""),
-        fullUrl: r.keys?.[0] || "",
         clicks: r.clicks || 0,
         impressions: r.impressions || 0,
+        ctr: (r.ctr || 0) * 100,
         position: r.position || 0,
       }));
 
@@ -136,7 +189,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
       }));
 
       // Cannibalization
-      const queryPageMap: Record<string, any[]> = {};
+      interface QueryPageItem {
+        page: string;
+        clicks?: number | null;
+        impressions?: number | null;
+        position?: number | null;
+      }
+      const queryPageMap: Record<string, QueryPageItem[]> = {};
       (cannibalizationRes.data.rows || []).forEach(r => {
         const query = r.keys?.[0] || "";
         const page = (r.keys?.[1] || "").replace(gscConn.externalId!, "");
@@ -145,13 +204,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
       });
 
       const cannibalization = Object.entries(queryPageMap)
-        .filter(([_, pages]) => pages.length > 1)
+        .filter(([, pages]) => pages.length > 1)
         .map(([query, pages]) => ({ query, pages }))
-        .sort((a, b) => b.pages.reduce((s, p) => s + p.impressions, 0) - a.pages.reduce((s, p) => s + p.impressions, 0))
+        .sort((a, b) => (b.pages.reduce((s, p) => s + (p.impressions || 0), 0)) - (a.pages.reduce((s, p) => s + (p.impressions || 0), 0)))
         .slice(0, 20);
 
       // Striking Distance (Grouped by Page)
-      const pageQueryMapSD: Record<string, any[]> = {};
+      interface PageQueryItem {
+        query: string;
+        clicks: number;
+        impressions: number;
+        position: number;
+      }
+      const pageQueryMapSD: Record<string, PageQueryItem[]> = {};
       (cannibalizationRes.data.rows || []).forEach(r => {
         const query = r.keys?.[0] || "";
         const page = (r.keys?.[1] || "").replace(gscConn.externalId!, "");
@@ -224,7 +289,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
 
         if (topQueryForPage) {
           try {
-            const htmlRes = await fetch(p.fullUrl, { headers: { "User-Agent": "MisterSK-SEO-Bot/1.0" }, signal: AbortSignal.timeout(3000) });
+            const pageUrl = `${gscConn.externalId}${p.page}`;
+            const htmlRes = await fetch(pageUrl, { headers: { "User-Agent": "MisterSK-SEO-Bot/1.0" }, signal: AbortSignal.timeout(3000) });
             const html = await htmlRes.text();
             const $ = cheerio.load(html);
             
@@ -237,8 +303,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
             titleCheck = words.every(w => title.includes(w));
             metaCheck = words.every(w => metaDesc.includes(w));
             h1Check = words.every(w => h1.includes(w));
-          } catch (e) {
-            console.error("Failed to fetch HTML for on-page SEO:", p.fullUrl);
+          } catch {
+            console.error("Failed to fetch HTML for on-page SEO:", p.page);
           }
         }
         
@@ -253,18 +319,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
         });
       }
 
-      // Totals & Deltas
-      const totalClicks = chartData.reduce((sum, d) => sum + d.clicks, 0);
-      const totalImpressions = chartData.reduce((sum, d) => sum + d.impressions, 0);
-      const avgCtr = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-      const validPositions = chartData.filter(d => d.position > 0);
-      const avgPosition = validPositions.length > 0 ? validPositions.reduce((sum, d) => sum + d.position, 0) / validPositions.length : 0;
-
-      const prevClicks = prevChartData.reduce((sum, d) => sum + d.clicks, 0);
-      const prevImpressions = prevChartData.reduce((sum, d) => sum + d.impressions, 0);
-      const clicksDelta = prevClicks > 0 ? ((totalClicks - prevClicks) / prevClicks) * 100 : 0;
-      const impressionsDelta = prevImpressions > 0 ? ((totalImpressions - prevImpressions) / prevImpressions) * 100 : 0;
-
       return NextResponse.json({ 
         property: {
           id: property.id,
@@ -272,11 +326,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
           clientName: property.client.name,
         },
         metrics: {
-          totalClicks,
-          clicksDelta,
-          totalImpressions,
-          impressionsDelta,
-          avgCtr: avgCtr.toFixed(2),
+          totalClicks: clicks,
+          clicksDelta: clicksChange,
+          totalImpressions: impressions,
+          impressionsDelta: impressionsChange,
+          avgCtr: ctr.toFixed(2),
           avgPosition: avgPosition.toFixed(1)
         },
         chartData,
@@ -288,11 +342,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
         cannibalization,
         onPageSeo
       });
-    } catch (gscError: any) {
+    } catch (gscError: unknown) {
       console.error("GSC API Error:", gscError);
       return NextResponse.json({ error: "Failed to fetch data from GSC." }, { status: 502 });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("GSC Detail Error:", error);
     return NextResponse.json({ error: "Failed to fetch property details" }, { status: 500 });
   }

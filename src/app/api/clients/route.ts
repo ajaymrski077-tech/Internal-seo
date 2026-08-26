@@ -30,8 +30,9 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(payload);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to load clients list" }, { status: 500 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Failed to load clients list" }, { status: 500 });
   }
 }
 
@@ -59,7 +60,8 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(newClient, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to create client" }, { status: 400 });
+  } catch (error: unknown) {
+    const errObj = error as Error;
+    return NextResponse.json({ error: errObj?.message || "Failed to create client" }, { status: 400 });
   }
 }

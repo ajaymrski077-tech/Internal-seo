@@ -85,7 +85,8 @@ export async function GET(
         interactions: totalClicksWebsite + totalClicksCall + totalClicksDirections + totalMessages + totalBookings
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Get GBP Location Performance error:", error);
     return NextResponse.json({ error: "Failed to load location performance metrics" }, { status: 500 });
   }

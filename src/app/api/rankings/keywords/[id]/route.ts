@@ -47,7 +47,8 @@ export async function GET(
       ...keyword,
       activityLogs,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Tracked keyword load error:", error);
     return NextResponse.json({ error: "Failed to load keyword detail" }, { status: 500 });
   }
@@ -82,7 +83,7 @@ export async function PATCH(
     const body = await req.json();
     const { status, tags, targetUrl } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (status !== undefined) data.status = status.toUpperCase();
     if (tags !== undefined) data.tags = tags;
     if (targetUrl !== undefined) data.targetUrl = targetUrl || null;
@@ -113,9 +114,10 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Tracked keyword update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update keyword" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update keyword" }, { status: 500 });
   }
 }
 
@@ -159,8 +161,9 @@ export async function DELETE(
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Tracked keyword delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete keyword" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete keyword" }, { status: 500 });
   }
 }

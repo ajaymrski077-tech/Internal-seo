@@ -185,8 +185,9 @@ export default function CampaignDetailPage() {
 
       setIsEditCampaignOpen(false);
       fetchCampaignDetail();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
@@ -201,8 +202,9 @@ export default function CampaignDetailPage() {
       const res = await fetch(`/api/pr/campaigns/${campaignId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete campaign");
       router.push("/admin/pr");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to delete");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "Failed to delete");
     } finally {
       setIsSaving(false);
     }
@@ -248,8 +250,9 @@ export default function CampaignDetailPage() {
       setOutFollowUpDate("");
       setOutNotes("");
       fetchCampaignDetail();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
@@ -329,8 +332,9 @@ export default function CampaignDetailPage() {
       setPlaceNotes("");
       setPlaceOutreachId("");
       fetchCampaignDetail();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
@@ -400,8 +404,9 @@ export default function CampaignDetailPage() {
       setTaskAssignedTo("");
       setTaskDueDate("");
       fetchCampaignDetail();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }

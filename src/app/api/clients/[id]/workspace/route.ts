@@ -27,8 +27,9 @@ export async function GET(
     }
 
     return NextResponse.json(payload);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Workspace endpoint load error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Internal server error" }, { status: 500 });
   }
 }

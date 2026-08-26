@@ -37,10 +37,11 @@ export async function GET(
 
     const sites = await listGscSites(connection.id);
     return NextResponse.json({ sites });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Discover GSC Sites Error:", error);
     return NextResponse.json(
-      { sites: [], error: error.message || "Failed to list GSC sites" },
+      { sites: [], error: errObj?.message || "Failed to list GSC sites" },
       { status: 500 }
     );
   }

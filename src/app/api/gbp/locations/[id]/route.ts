@@ -48,7 +48,8 @@ export async function GET(
         domain: loc.property?.domain || "Domain",
       }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Get GBP Location Detail error:", error);
     return NextResponse.json({ error: "Failed to load location details" }, { status: 500 });
   }

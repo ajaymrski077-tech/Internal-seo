@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
       }
 
       // Log activity
-      await (tx as any).activityLog.create({
+      await tx.activityLog.create({
         data: {
           actorEmail: user.email,
           action: "INTEGRATION_CONNECTED",
@@ -139,7 +139,8 @@ export async function GET(req: NextRequest) {
     response.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });
     return response;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Google Auth Callback Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
 
     const campaigns = await getCampaigns({ search, clientId, status, priority });
     return NextResponse.json({ campaigns });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Campaigns list error:", error);
     return NextResponse.json({ error: "Failed to fetch link campaigns" }, { status: 500 });
   }
@@ -80,8 +81,9 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json(campaign, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Campaign create error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create campaign" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to create campaign" }, { status: 500 });
   }
 }

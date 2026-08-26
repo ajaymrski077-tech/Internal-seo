@@ -100,14 +100,15 @@ export async function POST(
     if (connection.status === "CONNECTED") {
       try {
         await syncPropertyData(property.id);
-      } catch (syncError: any) {
+      } catch (syncError: unknown) {
+        const syncErrObj = syncError as Error;
         console.error("Initial data sync failed:", syncError);
         // Do not fail the whole request, but update connection status
         await prisma.integrationConnection.update({
           where: { id: connection.id },
           data: {
             syncStatus: "ERROR",
-            syncError: syncError.message || "Failed initial data sync",
+            syncError: syncErrObj?.message || "Failed initial data sync",
           },
         });
       }
@@ -135,9 +136,10 @@ export async function POST(
 
     const { accessToken, refreshToken, ...sanitized } = finalConnection || connection;
     return NextResponse.json(sanitized);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Failed to connect integration:", error);
-    return NextResponse.json({ error: error.message || "Failed to update integration connection" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update integration connection" }, { status: 500 });
   }
 }
 
@@ -195,7 +197,7 @@ export async function DELETE(
       });
 
       // Log activity
-      await (tx as any).activityLog.create({
+      await tx.activityLog.create({
         data: {
           actorEmail: user.email,
           action: "INTEGRATION_DISCONNECTED",
@@ -207,8 +209,9 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Failed to disconnect integration:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete integration connection" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete integration connection" }, { status: 500 });
   }
 }

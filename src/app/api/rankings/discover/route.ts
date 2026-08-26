@@ -22,8 +22,9 @@ export async function GET(req: NextRequest) {
 
     const keywords = await discoverKeywords(propertyIdStr, isNaN(days) ? 30 : days);
     return NextResponse.json({ keywords });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Discover keywords route error:", error);
-    return NextResponse.json({ error: error.message || "Failed to discover keywords" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to discover keywords" }, { status: 500 });
   }
 }

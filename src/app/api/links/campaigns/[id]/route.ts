@@ -25,7 +25,8 @@ export async function GET(
     }
 
     return NextResponse.json(campaign);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Campaign load error:", error);
     return NextResponse.json({ error: "Failed to load campaign detail" }, { status: 500 });
   }
@@ -60,7 +61,7 @@ export async function PATCH(
     const body = await req.json();
     const { name, description, objective, status, priority, startDate, targetDate, completedDate, monthlyTarget } = body;
 
-    const data: any = {};
+    const data: Record<string, unknown> = {};
     if (name !== undefined) data.name = name.trim();
     if (description !== undefined) data.description = description || null;
     if (objective !== undefined) data.objective = objective || null;
@@ -96,9 +97,10 @@ export async function PATCH(
     }
 
     return NextResponse.json(updated);
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Campaign update error:", error);
-    return NextResponse.json({ error: error.message || "Failed to update campaign" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to update campaign" }, { status: 500 });
   }
 }
 
@@ -142,8 +144,9 @@ export async function DELETE(
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Link Campaign delete error:", error);
-    return NextResponse.json({ error: error.message || "Failed to delete campaign" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to delete campaign" }, { status: 500 });
   }
 }

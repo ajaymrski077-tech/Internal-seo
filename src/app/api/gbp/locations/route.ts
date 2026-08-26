@@ -21,7 +21,24 @@ export async function GET(req: NextRequest) {
       orderBy: { displayName: "asc" },
     });
 
-    const formatted = locations.map((loc: any) => ({
+    interface GbpLocRecord {
+      id: string | number;
+      locationName: string;
+      displayName: string;
+      address?: string | null;
+      phone?: string | null;
+      websiteUri?: string | null;
+      primaryCategory?: string | null;
+      syncStatus: string;
+      syncError?: string | null;
+      lastSyncTime?: Date | null;
+      property?: {
+        domain?: string;
+        client?: { id: string | number; name: string };
+      };
+    }
+
+    const formatted = (locations as GbpLocRecord[]).map((loc) => ({
       id: loc.id,
       locationName: loc.locationName,
       displayName: loc.displayName,
@@ -38,7 +55,8 @@ export async function GET(req: NextRequest) {
     }));
 
     return NextResponse.json({ locations: formatted });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("List GBP Locations error:", error);
     return NextResponse.json({ error: "Failed to list GMB locations" }, { status: 500 });
   }

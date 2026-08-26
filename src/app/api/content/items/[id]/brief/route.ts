@@ -23,7 +23,8 @@ export async function GET(
     });
 
     return NextResponse.json({ brief });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Get Content Brief Error:", error);
     return NextResponse.json({ error: "Failed to load content brief" }, { status: 500 });
   }
@@ -89,7 +90,8 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, brief });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Save Content Brief Error:", error);
     return NextResponse.json({ error: "Failed to save content brief" }, { status: 500 });
   }

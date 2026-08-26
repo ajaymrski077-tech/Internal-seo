@@ -50,16 +50,18 @@ export async function GET(
             accountDisplayName: acc.accountName
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+    const errObj = err as Error;
         console.error(`Failed to list GMB locations for account ${acc.name}:`, err);
       }
     }
 
     return NextResponse.json({ locations: allLocations });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Discover GBP Locations Error:", error);
     return NextResponse.json(
-      { locations: [], error: error.message || "Failed to list GMB locations" },
+      { locations: [], error: errObj?.message || "Failed to list GMB locations" },
       { status: 500 }
     );
   }

@@ -35,9 +35,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try {
       await syncPropertyData(primaryProperty.id);
       return NextResponse.json({ success: true, message: "Sync completed successfully." });
-    } catch (syncError: any) {
+    } catch (syncError: unknown) {
+      const syncErrObj = syncError as Error;
       console.error("Manual sync error:", syncError);
-      return NextResponse.json({ error: syncError.message || "Failed to sync data." }, { status: 500 });
+      return NextResponse.json({ error: syncErrObj?.message || "Failed to sync data." }, { status: 500 });
     }
 
   } catch (error) {

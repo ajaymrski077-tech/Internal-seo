@@ -24,7 +24,8 @@ export async function GET(
     }
 
     return NextResponse.json({ audit });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("SEO Audit detail load error:", error);
     return NextResponse.json({ error: "Failed to load SEO audit details" }, { status: 500 });
   }
@@ -53,7 +54,8 @@ export async function DELETE(
 
     await deleteAudit(id);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("SEO Audit delete error:", error);
     return NextResponse.json({ error: "Failed to delete SEO audit" }, { status: 500 });
   }

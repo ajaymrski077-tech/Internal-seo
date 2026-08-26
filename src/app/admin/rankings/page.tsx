@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, Plus, Filter, TrendingUp, AlertCircle, X, ChevronRight, Check, ArrowUpRight, ArrowDownRight, RefreshCw, BarChart2, Award, Settings, Tag } from "lucide-react";
+import { Search, Plus, Filter, TrendingUp, AlertCircle, X, ChevronRight, Check, ArrowUpRight, ArrowDownRight, RefreshCw, BarChart2, Award, Settings, Tag, Trash2 } from "lucide-react";
 import styles from "@/styles/SharedModule.module.css";
 import modalStyles from "@/styles/ClientModal.module.css";
 
@@ -255,8 +255,9 @@ export default function RankingsPage() {
       setFormTags("");
       fetchTrackedKeywords();
       fetchOverview();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
@@ -748,27 +749,5 @@ export default function RankingsPage() {
         </div>
       )}
     </div>
-  );
-}
-
-// Inline trash icon since Lucide React trash is used
-function Trash2({ size, ...props }: any) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size || 24}
-      height={size || 24}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M3 6h18" />
-      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-    </svg>
   );
 }

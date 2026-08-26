@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const integration = searchParams.get("integration");
 
-    const whereClause: any = {};
+    const whereClause: Record<string, unknown> = {};
     
     if (integration === "GSC") {
       whereClause.connections = {
@@ -37,15 +37,23 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const formatted = properties.map(p => ({
+    interface PropertyWithClient {
+      id: string | number;
+      domain: string;
+      clientId: string | number;
+      client?: { name: string };
+    }
+
+    const formatted = (properties as unknown as PropertyWithClient[]).map(p => ({
       id: p.id,
       domain: p.domain,
       clientId: p.clientId,
-      clientName: p.client.name
+      clientName: p.client?.name || "Client"
     }));
 
     return NextResponse.json({ properties: formatted });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Properties API Error:", error);
     return NextResponse.json({ error: "Failed to load properties" }, { status: 500 });
   }

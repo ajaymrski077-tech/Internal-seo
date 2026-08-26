@@ -14,7 +14,7 @@ import {
 import styles from "@/styles/ClientCard.module.css";
 import { ClientDashboardCard } from "@/services/dashboardService";
 import { DeliveryDetail } from "@/services/deliveryService";
-import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, Tooltip, Dot } from "recharts";
+import { ResponsiveContainer, ComposedChart, Area, Line, XAxis, Tooltip } from "recharts";
 
 interface ClientCardProps {
   client: ClientDashboardCard;
@@ -22,11 +22,78 @@ interface ClientCardProps {
   onView: (id: string | number) => void;
 }
 
-export default function ClientCard({ client, onEdit, onView }: ClientCardProps) {
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat().format(num);
+interface CustomDotProps {
+  cx?: number;
+  cy?: number;
+  payload?: {
+    delivery?: DeliveryDetail;
   };
+}
 
+const CustomDot = (props: CustomDotProps) => {
+  const { cx = 0, cy = 0, payload } = props;
+  if (!payload?.delivery) return null;
+  
+  const isLink = payload.delivery.type === "BACKLINK";
+  
+  if (isLink) {
+    return (
+      <svg x={cx - 5} y={cy - 5} width={10} height={10} viewBox="0 0 10 10">
+        <polygon points="5,0 10,5 5,10 0,5" fill="#f97316" stroke="white" strokeWidth="1"/>
+      </svg>
+    );
+  } else {
+    return (
+      <circle cx={cx} cy={cy} r={4} fill="#8b5cf6" stroke="white" strokeWidth="1" />
+    );
+  }
+};
+
+interface TooltipPayloadItem {
+  payload: {
+    displayDate: string;
+    currentVal: number;
+    prevVal: number;
+    delivery?: DeliveryDetail;
+  };
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayloadItem[];
+  label?: string;
+}
+
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat().format(num);
+};
+
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{ background: "#1F2937", color: "white", padding: "12px", borderRadius: "8px", fontSize: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", border: "none", zIndex: 10 }}>
+        <div style={{ fontWeight: "bold", marginBottom: "8px" }}>{data.displayDate}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+          <div style={{ width: "8px", height: "8px", background: "#3B82F6", borderRadius: "2px" }}></div>
+          Traffic: {formatNumber(data.currentVal)}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+          <div style={{ width: "8px", height: "8px", background: "#94A3B8", borderRadius: "2px" }}></div>
+          Prev Period: {formatNumber(data.prevVal)}
+        </div>
+        {data.delivery && (
+          <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #374151", color: data.delivery.type === "BACKLINK" ? "#f97316" : "#8b5cf6", fontWeight: "600" }}>
+            {data.delivery.type === "BACKLINK" ? "♦ Backlink Placed" : "● Content Published"}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+export default function ClientCard({ client, onEdit, onView }: ClientCardProps) {
   // Determine what metric to plot in sparkline
   const hasDataToPlot = client.hasGA4 || client.hasGSC;
   const dataKey = client.hasGA4 ? "sessions" : "organicTraffic";
@@ -52,52 +119,6 @@ export default function ClientCard({ client, onEdit, onView }: ClientCardProps) 
 
   const numBacklinks = client.deliveries.filter(d => d.type === "BACKLINK").length;
   const numContent = client.deliveries.filter(d => d.type === "CONTENT").length;
-
-  const CustomDot = (props: any) => {
-    const { cx, cy, payload } = props;
-    if (!payload.delivery) return null;
-    
-    const isLink = payload.delivery.type === "BACKLINK";
-    
-    if (isLink) {
-      // Draw orange diamond
-      return (
-        <svg x={cx - 5} y={cy - 5} width={10} height={10} viewBox="0 0 10 10">
-          <polygon points="5,0 10,5 5,10 0,5" fill="#f97316" stroke="white" strokeWidth="1"/>
-        </svg>
-      );
-    } else {
-      // Draw purple circle
-      return (
-        <circle cx={cx} cy={cy} r={4} fill="#8b5cf6" stroke="white" strokeWidth="1" />
-      );
-    }
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div style={{ background: "#1F2937", color: "white", padding: "12px", borderRadius: "8px", fontSize: "12px", boxShadow: "0 4px 6px rgba(0,0,0,0.1)", border: "none", zIndex: 10 }}>
-          <div style={{ fontWeight: "bold", marginBottom: "8px" }}>{data.displayDate}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-            <div style={{ width: "8px", height: "8px", background: "#3B82F6", borderRadius: "2px" }}></div>
-            {metricsLabel}: {formatNumber(data.currentVal)}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-            <div style={{ width: "8px", height: "8px", background: "#94A3B8", borderRadius: "2px" }}></div>
-            Prev Period: {formatNumber(data.prevVal)}
-          </div>
-          {data.delivery && (
-            <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #374151", color: data.delivery.type === "BACKLINK" ? "#f97316" : "#8b5cf6", fontWeight: "600" }}>
-              {data.delivery.type === "BACKLINK" ? "♦ Backlink Placed" : "● Content Published"}
-            </div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
 
   // Determine Badge Classes & Titles based on connections
   const getBadgeStyle = (provider: "GA4" | "GSC", status: string, errorMsg: string | null) => {

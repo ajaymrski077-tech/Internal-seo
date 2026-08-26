@@ -57,7 +57,8 @@ export async function GET(req: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Google Auth Route Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

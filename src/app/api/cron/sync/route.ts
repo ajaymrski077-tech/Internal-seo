@@ -45,9 +45,10 @@ export async function GET(req: NextRequest) {
         // We await sequentially to avoid hitting Google API rate limits too hard
         await syncPropertyData(property.id);
         results.push({ propertyId: property.id, domain: property.domain, status: "success" });
-      } catch (err: any) {
+      } catch (err: unknown) {
+    const errObj = err as Error;
         console.error(`[CRON] Failed to sync property ID ${property.id}:`, err);
-        results.push({ propertyId: property.id, domain: property.domain, status: "error", error: err.message });
+        results.push({ propertyId: property.id, domain: property.domain, status: "error", error: errObj?.message });
       }
     }
 
@@ -58,7 +59,8 @@ export async function GET(req: NextRequest) {
       message: `Processed ${propertiesToSync.length} properties.`,
       results
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("[CRON] Fatal sync error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

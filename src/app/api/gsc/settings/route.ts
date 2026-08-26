@@ -23,7 +23,8 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ properties, clients });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("GSC settings fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
   }
@@ -43,9 +44,16 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payload format" }, { status: 400 });
     }
 
+    interface PropertyUpdate {
+      id: string | number;
+      clientId?: string | number | null;
+      brandType?: string | null;
+      brandKeywords?: string | null;
+    }
+
     // Process updates in parallel
     await Promise.all(
-      propertyUpdates.map((update: any) =>
+      (propertyUpdates as PropertyUpdate[]).map((update) =>
         prisma.websiteProperty.update({
           where: { id: update.id },
           data: {
@@ -58,7 +66,8 @@ export async function PUT(req: NextRequest) {
     );
 
     return NextResponse.json({ message: "Settings updated successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("GSC settings update error:", error);
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }

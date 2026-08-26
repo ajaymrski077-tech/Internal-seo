@@ -137,8 +137,9 @@ export default function TicketsPage() {
 
       setIsModalOpen(false);
       fetchTickets();
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
@@ -157,8 +158,9 @@ export default function TicketsPage() {
       if (!res.ok) throw new Error("Failed to delete ticket.");
       setIsModalOpen(false);
       fetchTickets();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to delete ticket");
+    } catch (err: unknown) {
+      const errObj = err as Error;
+      setErrorMsg(errObj?.message || "Failed to delete ticket");
     } finally {
       setIsSaving(false);
     }

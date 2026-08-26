@@ -21,8 +21,9 @@ export async function POST(
 
     const snapshot = await generateReportSnapshot(id, user.email);
     return NextResponse.json({ success: true, snapshotId: snapshot.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errObj = error as Error;
     console.error("Report snapshot regeneration API error:", error);
-    return NextResponse.json({ error: error.message || "Failed to regenerate report snapshot" }, { status: 500 });
+    return NextResponse.json({ error: errObj?.message || "Failed to regenerate report snapshot" }, { status: 500 });
   }
 }

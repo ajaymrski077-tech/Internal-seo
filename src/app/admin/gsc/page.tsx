@@ -32,7 +32,8 @@ export default function GscOverviewPage() {
         if (!res.ok) throw new Error("Failed to load GSC overview");
         const json = await res.json();
         setData(json.data || []);
-      } catch (err: any) {
+      } catch (err: unknown) {
+      const errObj = err as Error;
         handleApiError(err, { 
           toast: { error: toastError },
           fallbackMessage: "Failed to load GSC overview"
