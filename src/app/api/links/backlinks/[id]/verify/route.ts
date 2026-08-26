@@ -38,17 +38,17 @@ export async function POST(
       await logLinkActivity(
         user.email,
         "LINK_BACKLINK_VERIFIED",
-        backlink.campaign.clientId,
-        backlink.campaign.client.name,
-        { campaignId: backlink.campaignId, campaignName: backlink.campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain, status: "LIVE" }
+        backlink.campaign?.clientId || "",
+        backlink.campaign?.client?.name || "Client",
+        { campaignId: backlink.campaignId, campaignName: backlink.campaign?.name || "", backlinkId: backlink.id, sourceDomain: backlink.sourceDomain, status: "LIVE" }
       );
     } else {
       await logLinkActivity(
         user.email,
         "LINK_BACKLINK_VERIFICATION_FAILED",
-        backlink.campaign.clientId,
-        backlink.campaign.client.name,
-        { campaignId: backlink.campaignId, campaignName: backlink.campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain, status: result.status, error: result.error || "No link found matching domain" }
+        backlink.campaign?.clientId || "",
+        backlink.campaign?.client?.name || "Client",
+        { campaignId: backlink.campaignId, campaignName: backlink.campaign?.name || "", backlinkId: backlink.id, sourceDomain: backlink.sourceDomain, status: result.status, error: result.error || "No link found matching domain" }
       );
     }
 

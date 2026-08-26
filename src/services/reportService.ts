@@ -202,8 +202,8 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
       },
     });
 
-    const ga4Conn = primaryProperty?.connections.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
-    const gscConn = primaryProperty?.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
+    const ga4Conn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+    const gscConn = primaryProperty?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
     const hasGA4 = ga4Conn?.status === "CONNECTED" || ga4Conn?.status === "SYNC_ERROR";
     const hasGSC = gscConn?.status === "CONNECTED" || gscConn?.status === "SYNC_ERROR";
@@ -305,7 +305,7 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
           actorEmail,
           action: "REPORT_GENERATED",
           clientId: report.clientId,
-          clientName: report.client.name,
+          clientName: report.client?.name,
           metadata: JSON.stringify({ reportId, snapshotId: snap.id }),
         },
       });

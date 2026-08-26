@@ -28,10 +28,11 @@ export async function GET(req: NextRequest) {
 
     // 2. Define required scopes based on provider
     const scopes = [];
-    if (provider === "GA4") {
-      scopes.push("https://www.googleapis.com/auth/analytics.readonly");
-    } else if (provider === "GSC") {
-      scopes.push("https://www.googleapis.com/auth/webmasters.readonly");
+    if (provider === "GA4" || provider === "GSC") {
+      scopes.push(
+        "https://www.googleapis.com/auth/analytics.readonly",
+        "https://www.googleapis.com/auth/webmasters.readonly"
+      );
     } else if (provider === "GBP") {
       scopes.push("https://www.googleapis.com/auth/business.manage");
     }

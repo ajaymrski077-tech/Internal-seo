@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
           actorEmail: user.email,
           action: "CONTENT_IDEA_CREATED",
           clientId: prop.clientId,
-          clientName: prop.client.name,
+          clientName: prop.client?.name || "Client",
           metadata: JSON.stringify({ itemId: item.id, title: item.title })
         }
       });

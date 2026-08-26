@@ -33,7 +33,7 @@ export const discoverKeywords = async (
   });
   if (!property) throw new Error("Property not found");
 
-  const gscConn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
+  const gscConn = property.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
   if (!gscConn || !gscConn.externalId) {
     return [];
   }
@@ -85,7 +85,7 @@ export const discoverKeywords = async (
     if (q) prevMap[q.toLowerCase().trim()] = row;
   }
 
-  const trackedSet = new Set(property.trackedKeywords.map((k: TrackedKeywordRecord) => k.normalizedKeyword));
+  const trackedSet = new Set(property.trackedKeywords?.map((k: TrackedKeywordRecord) => k.normalizedKeyword));
 
   const result: DiscoveredKeyword[] = [];
 
@@ -219,9 +219,9 @@ export const syncPropertyKeywords = async (
     include: { connections: true, trackedKeywords: { where: { status: "ACTIVE" } } }
   });
 
-  if (!property || property.trackedKeywords.length === 0) return;
+  if (!property || property.trackedKeywords?.length === 0) return;
 
-  const gscConn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
+  const gscConn = property.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
   if (!gscConn || !gscConn.externalId) return;
 
   const endDate = new Date();
@@ -250,13 +250,13 @@ export const syncPropertyKeywords = async (
   const rows = response.data.rows || [];
   
   // Map tracked keywords by normalized name
-  const kwMap: Record<string, number> = {};
-  for (const kw of property.trackedKeywords) {
+  const kwMap: Record<string, string | number> = {};
+  for (const kw of (property.trackedKeywords || [])) {
     kwMap[kw.normalizedKeyword] = kw.id;
   }
 
   const snapshotsToUpsert: Array<{
-    trackedKeywordId: number;
+    trackedKeywordId: string | number;
     date: Date;
     position: number;
     clicks: number;
@@ -372,7 +372,7 @@ export const getRankingsOverview = async (
   const top10Losses: string[] = [];
 
   const strikingDistance: Array<{
-    id: number;
+    id: string | number;
     keyword: string;
     client: string;
     domain: string;
@@ -383,7 +383,7 @@ export const getRankingsOverview = async (
   }> = [];
 
   const highImpLowCtr: Array<{
-    id: number;
+    id: string | number;
     keyword: string;
     client: string;
     position: number;
@@ -403,15 +403,15 @@ export const getRankingsOverview = async (
 
   for (const kw of keywords) {
     const snaps = kw.snapshots;
-    if (snaps.length === 0) {
+    if (!snaps || snaps.length === 0) {
       positionGroups.missing++;
       continue;
     }
 
     // Get current value (latest snapshot close to today)
-    const currentSnap = snaps.filter((s: KeywordRankingSnapshotRecord) => s.position !== null && s.position > 0).pop();
+    const currentSnap = [...snaps].filter((s: KeywordRankingSnapshotRecord) => s.position !== null && s.position > 0).pop();
     // Get previous period comparator
-    const prevSnap = snaps.filter((s: KeywordRankingSnapshotRecord) => s.date < prevCutoff && s.position !== null && s.position > 0).pop();
+    const prevSnap = [...snaps].filter((s: KeywordRankingSnapshotRecord) => s.date < prevCutoff && s.position !== null && s.position > 0).pop();
 
     if (!currentSnap || currentSnap.position === null) {
       positionGroups.missing++;
@@ -448,8 +448,8 @@ export const getRankingsOverview = async (
       strikingDistance.push({
         id: kw.id,
         keyword: kw.keyword,
-        client: kw.client.name,
-        domain: kw.property.domain,
+        client: kw.client?.name || "Client",
+        domain: kw.property?.domain || "",
         position: currPos,
         impressions: currentSnap.impressions,
         ctr: currentSnap.ctr,
@@ -462,7 +462,7 @@ export const getRankingsOverview = async (
       highImpLowCtr.push({
         id: kw.id,
         keyword: kw.keyword,
-        client: kw.client.name,
+        client: kw.client?.name || "Client",
         position: currPos,
         impressions: currentSnap.impressions,
         ctr: currentSnap.ctr,
@@ -478,7 +478,7 @@ export const getRankingsOverview = async (
         improvedCount++;
         winnersList.push({
           keyword: kw.keyword,
-          client: kw.client.name,
+          client: kw.client?.name || "Client",
           oldPos: prevPos,
           newPos: currPos,
           change: parseFloat(change.toFixed(2)),
@@ -492,7 +492,7 @@ export const getRankingsOverview = async (
         declinedCount++;
         losersList.push({
           keyword: kw.keyword,
-          client: kw.client.name,
+          client: kw.client?.name || "Client",
           oldPos: prevPos,
           newPos: currPos,
           change: parseFloat(Math.abs(change).toFixed(2)),

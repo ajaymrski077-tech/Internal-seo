@@ -74,10 +74,28 @@ export type TaskWithRelations = Task & {
   linkCampaign?: LinkCampaignWithRelations | null;
 };
 
+export type PrPublicationWithRelations = PrPublication & {
+  contacts?: PrContactWithRelations[];
+};
+
+export type PrContactWithRelations = PrContact & {
+  publication?: PrPublicationWithRelations | null;
+};
+
+export type PrPlacementWithRelations = PrPlacement & {
+  campaign?: PrCampaignWithRelations | null;
+};
+
+export type PrOutreachRecordWithRelations = PrOutreachRecord & {
+  campaign?: PrCampaignWithRelations | null;
+  contact?: PrContactWithRelations | null;
+  publication?: PrPublicationWithRelations | null;
+};
+
 export type PrCampaignWithRelations = PrCampaign & {
   client?: ClientWithRelations | null;
-  outreachRecords?: PrOutreachRecord[];
-  placements?: PrPlacement[];
+  outreachRecords?: PrOutreachRecordWithRelations[];
+  placements?: PrPlacementWithRelations[];
   tasks?: TaskWithRelations[];
   _count?: {
     outreachRecords: number;
@@ -86,10 +104,19 @@ export type PrCampaignWithRelations = PrCampaign & {
   };
 };
 
+export type LinkOpportunityWithRelations = LinkOpportunity & {
+  campaign?: LinkCampaignWithRelations | null;
+};
+
+export type AcquiredBacklinkWithRelations = AcquiredBacklink & {
+  campaign?: LinkCampaignWithRelations | null;
+  opportunity?: LinkOpportunityWithRelations | null;
+};
+
 export type LinkCampaignWithRelations = LinkCampaign & {
   client?: ClientWithRelations | null;
-  opportunities?: LinkOpportunity[];
-  acquiredLinks?: AcquiredBacklink[];
+  opportunities?: LinkOpportunityWithRelations[];
+  acquiredLinks?: AcquiredBacklinkWithRelations[];
   tasks?: TaskWithRelations[];
   _count?: {
     opportunities: number;
@@ -101,13 +128,34 @@ export type LinkCampaignWithRelations = LinkCampaign & {
 export type TrackedKeywordWithRelations = TrackedKeyword & {
   client?: ClientWithRelations | null;
   property?: WebsitePropertyWithRelations | null;
-  snapshots?: KeywordRankingSnapshot[];
+  snapshots?: KeywordRankingSnapshotWithRelations[];
+};
+
+export type KeywordRankingSnapshotWithRelations = KeywordRankingSnapshot & {
+  trackedKeyword?: TrackedKeywordWithRelations | null;
+};
+
+export type SeoIssueWithRelations = SeoIssue & {
+  audit?: SeoAuditWithRelations | null;
+  page?: SeoPageWithRelations | null;
+};
+
+export type SeoPageWithRelations = SeoPage & {
+  audit?: SeoAuditWithRelations | null;
+  issues?: SeoIssueWithRelations[];
+  _count?: {
+    issues: number;
+  };
 };
 
 export type SeoAuditWithRelations = SeoAudit & {
   property?: WebsitePropertyWithRelations | null;
-  pages?: SeoPage[];
-  issues?: SeoIssue[];
+  pages?: SeoPageWithRelations[];
+  issues?: SeoIssueWithRelations[];
+  _count?: {
+    pages: number;
+    issues: number;
+  };
 };
 
 export type GbpLocationWithRelations = GbpLocation & {
@@ -116,6 +164,7 @@ export type GbpLocationWithRelations = GbpLocation & {
 };
 
 export type ContentItemWithRelations = ContentItem & {
+  property?: WebsitePropertyWithRelations | null;
   brief?: ContentBrief | null;
   draft?: ContentDraft | null;
 };
@@ -138,18 +187,18 @@ export const activityLogCol = createModel<ActivityLog>("activityLogs");
 export const reportSnapshotCol = createModel<ReportSnapshot>("reportSnapshots");
 export const ticketCol = createModel<TicketWithRelations>("tickets", attachTicketRelations);
 export const taskCol = createModel<TaskWithRelations>("tasks", attachTaskRelations);
-export const prPublicationCol = createModel<PrPublication>("prPublications");
-export const prContactCol = createModel<PrContact>("prContacts");
-export const prOutreachRecordCol = createModel<PrOutreachRecord>("prOutreachRecords");
-export const prPlacementCol = createModel<PrPlacement>("prPlacements");
+export const prPublicationCol = createModel<PrPublicationWithRelations>("prPublications", attachPrPublicationRelations);
+export const prContactCol = createModel<PrContactWithRelations>("prContacts", attachPrContactRelations);
+export const prOutreachRecordCol = createModel<PrOutreachRecordWithRelations>("prOutreachRecords", attachPrOutreachRelations);
+export const prPlacementCol = createModel<PrPlacementWithRelations>("prPlacements", attachPrPlacementRelations);
 export const prCampaignCol = createModel<PrCampaignWithRelations>("prCampaigns", attachPrCampaignRelations);
-export const linkOpportunityCol = createModel<LinkOpportunity>("linkOpportunities");
-export const acquiredBacklinkCol = createModel<AcquiredBacklink>("acquiredBacklinks");
+export const linkOpportunityCol = createModel<LinkOpportunityWithRelations>("linkOpportunities", attachLinkOpportunityRelations);
+export const acquiredBacklinkCol = createModel<AcquiredBacklinkWithRelations>("acquiredBacklinks", attachAcquiredBacklinkRelations);
 export const linkCampaignCol = createModel<LinkCampaignWithRelations>("linkCampaigns", attachLinkCampaignRelations);
-export const keywordRankingSnapshotCol = createModel<KeywordRankingSnapshot>("keywordRankingSnapshots");
+export const keywordRankingSnapshotCol = createModel<KeywordRankingSnapshotWithRelations>("keywordRankingSnapshots", attachKeywordRankingSnapshotRelations);
 export const trackedKeywordCol = createModel<TrackedKeywordWithRelations>("trackedKeywords", attachTrackedKeywordRelations);
-export const seoPageCol = createModel<SeoPage>("seoPages");
-export const seoIssueCol = createModel<SeoIssue>("seoIssues");
+export const seoPageCol = createModel<SeoPageWithRelations>("seoPages", attachSeoPageRelations);
+export const seoIssueCol = createModel<SeoIssueWithRelations>("seoIssues", attachSeoIssueRelations);
 export const seoAuditCol = createModel<SeoAuditWithRelations>("seoAudits", attachSeoAuditRelations);
 export const gbpPerformanceSnapshotCol = createModel<GbpPerformanceSnapshot>("gbpPerformanceSnapshots");
 export const gbpLocationCol = createModel<GbpLocationWithRelations>("gbpLocations", attachGbpLocationRelations);
@@ -254,6 +303,44 @@ async function attachTaskRelations(item: TaskWithRelations, include: IncludeConf
   return item;
 }
 
+async function attachPrPublicationRelations(item: PrPublicationWithRelations, include: IncludeConfig): Promise<PrPublicationWithRelations> {
+  if (include?.contacts) item.contacts = await prContactCol.findMany({ where: { publicationId: item.id } });
+  return item;
+}
+
+async function attachPrContactRelations(item: PrContactWithRelations, include: IncludeConfig): Promise<PrContactWithRelations> {
+  if (include?.publication && item.publicationId) item.publication = await prPublicationCol.findUnique({ where: { id: item.publicationId } });
+  return item;
+}
+
+async function attachPrPlacementRelations(item: PrPlacementWithRelations, include: IncludeConfig): Promise<PrPlacementWithRelations> {
+  if (include?.campaign && item.campaignId) {
+    const campInclude = typeof include.campaign === "object" && include.campaign !== null
+      ? ((include.campaign as Record<string, unknown>).include || include.campaign)
+      : undefined;
+    item.campaign = await prCampaignCol.findUnique({
+      where: { id: item.campaignId },
+      include: campInclude as Record<string, unknown> | undefined
+    });
+  }
+  return item;
+}
+
+async function attachPrOutreachRelations(item: PrOutreachRecordWithRelations, include: IncludeConfig): Promise<PrOutreachRecordWithRelations> {
+  if (include?.campaign && item.campaignId) {
+    const campInclude = typeof include.campaign === "object" && include.campaign !== null
+      ? ((include.campaign as Record<string, unknown>).include || include.campaign)
+      : undefined;
+    item.campaign = await prCampaignCol.findUnique({
+      where: { id: item.campaignId },
+      include: campInclude as Record<string, unknown> | undefined
+    });
+  }
+  if (include?.contact && item.contactId) item.contact = await prContactCol.findUnique({ where: { id: item.contactId } });
+  if (include?.publication && item.publicationId) item.publication = await prPublicationCol.findUnique({ where: { id: item.publicationId } });
+  return item;
+}
+
 async function attachPrCampaignRelations(item: PrCampaignWithRelations, include: IncludeConfig): Promise<PrCampaignWithRelations> {
   if (include?.client && item.clientId) item.client = await clientCol.findUnique({ where: { id: item.clientId } });
   if (include?.outreachRecords) item.outreachRecords = await prOutreachRecordCol.findMany({ where: { campaignId: item.id } });
@@ -266,6 +353,33 @@ async function attachPrCampaignRelations(item: PrCampaignWithRelations, include:
       tasks: await taskCol.count({ where: { prCampaignId: item.id } }),
     };
   }
+  return item;
+}
+
+async function attachLinkOpportunityRelations(item: LinkOpportunityWithRelations, include: IncludeConfig): Promise<LinkOpportunityWithRelations> {
+  if (include?.campaign && item.campaignId) {
+    const campInclude = typeof include.campaign === "object" && include.campaign !== null
+      ? ((include.campaign as Record<string, unknown>).include || include.campaign)
+      : undefined;
+    item.campaign = await linkCampaignCol.findUnique({
+      where: { id: item.campaignId },
+      include: campInclude as Record<string, unknown> | undefined
+    });
+  }
+  return item;
+}
+
+async function attachAcquiredBacklinkRelations(item: AcquiredBacklinkWithRelations, include: IncludeConfig): Promise<AcquiredBacklinkWithRelations> {
+  if (include?.campaign && item.campaignId) {
+    const campInclude = typeof include.campaign === "object" && include.campaign !== null
+      ? ((include.campaign as Record<string, unknown>).include || include.campaign)
+      : undefined;
+    item.campaign = await linkCampaignCol.findUnique({
+      where: { id: item.campaignId },
+      include: campInclude as Record<string, unknown> | undefined
+    });
+  }
+  if (include?.opportunity && item.opportunityId) item.opportunity = await linkOpportunityCol.findUnique({ where: { id: item.opportunityId } });
   return item;
 }
 
@@ -291,10 +405,54 @@ async function attachTrackedKeywordRelations(item: TrackedKeywordWithRelations, 
   return item;
 }
 
+async function attachKeywordRankingSnapshotRelations(item: KeywordRankingSnapshotWithRelations, include: IncludeConfig): Promise<KeywordRankingSnapshotWithRelations> {
+  if (include?.trackedKeyword && item.trackedKeywordId) item.trackedKeyword = await trackedKeywordCol.findUnique({ where: { id: item.trackedKeywordId } });
+  return item;
+}
+
+async function attachSeoPageRelations(item: SeoPageWithRelations, include: IncludeConfig): Promise<SeoPageWithRelations> {
+  if (include?.audit && item.auditId) item.audit = await seoAuditCol.findUnique({ where: { id: item.auditId } });
+  if (include?.issues) item.issues = await seoIssueCol.findMany({ where: { pageId: item.id } });
+  if (include?._count) {
+    item._count = {
+      issues: await seoIssueCol.count({ where: { pageId: item.id } }),
+    };
+  }
+  return item;
+}
+
+async function attachSeoIssueRelations(item: SeoIssueWithRelations, include: IncludeConfig): Promise<SeoIssueWithRelations> {
+  if (include?.audit && item.auditId) item.audit = await seoAuditCol.findUnique({ where: { id: item.auditId } });
+  if (include?.page && item.pageId) item.page = await seoPageCol.findUnique({ where: { id: item.pageId } });
+  return item;
+}
+
 async function attachSeoAuditRelations(item: SeoAuditWithRelations, include: IncludeConfig): Promise<SeoAuditWithRelations> {
-  if (include?.property && item.propertyId) item.property = await websitePropertyCol.findUnique({ where: { id: item.propertyId } });
+  if (include?.property && item.propertyId) {
+    const propInclude = typeof include.property === "object" && include.property !== null
+      ? ((include.property as Record<string, unknown>).include || include.property)
+      : undefined;
+    item.property = await websitePropertyCol.findUnique({
+      where: { id: item.propertyId },
+      include: propInclude as Record<string, unknown> | undefined
+    });
+  }
   if (include?.pages) item.pages = await seoPageCol.findMany({ where: { auditId: item.id } });
-  if (include?.issues) item.issues = await seoIssueCol.findMany({ where: { auditId: item.id } });
+  if (include?.issues) {
+    const issuesInclude = typeof include.issues === "object" && include.issues !== null
+      ? ((include.issues as Record<string, unknown>).include || include.issues)
+      : undefined;
+    item.issues = await seoIssueCol.findMany({
+      where: { auditId: item.id },
+      include: issuesInclude as Record<string, unknown> | undefined
+    });
+  }
+  if (include?._count) {
+    item._count = {
+      pages: await seoPageCol.count({ where: { auditId: item.id } }),
+      issues: await seoIssueCol.count({ where: { auditId: item.id } }),
+    };
+  }
   return item;
 }
 
@@ -305,6 +463,15 @@ async function attachGbpLocationRelations(item: GbpLocationWithRelations, includ
 }
 
 async function attachContentItemRelations(item: ContentItemWithRelations, include: IncludeConfig): Promise<ContentItemWithRelations> {
+  if (include?.property && item.propertyId) {
+    const propInclude = typeof include.property === "object" && include.property !== null
+      ? ((include.property as Record<string, unknown>).include || include.property)
+      : undefined;
+    item.property = await websitePropertyCol.findUnique({
+      where: { id: item.propertyId },
+      include: propInclude as Record<string, unknown> | undefined
+    });
+  }
   if (include?.brief) item.brief = await contentBriefCol.findFirst({ where: { contentItemId: item.id } });
   if (include?.draft) item.draft = await contentDraftCol.findFirst({ where: { contentItemId: item.id } });
   return item;

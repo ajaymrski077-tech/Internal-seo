@@ -1,4 +1,4 @@
-import prisma from "@/lib/db";
+import prisma, { ContentItemWithRelations } from "@/lib/db";
 
 // ─── Interfaces ────────────────────────────────────────────────────
 
@@ -60,10 +60,10 @@ export async function transitionContentStatus(
   newStatus: string,
   actorEmail: string
 ): Promise<Record<string, unknown>> {
-  const item = await prisma.contentItem.findUnique({
+  const item = (await prisma.contentItem.findUnique({
     where: { id: itemId },
-    include: { property: { select: { clientId: true, client: { select: { name: true } } } } }
-  });
+    include: { property: { include: { client: true } } }
+  })) as (ContentItemWithRelations & { property?: { clientId?: string; client?: { name?: string } } }) | null;
 
   if (!item) throw new Error("Content item not found");
 
@@ -115,7 +115,7 @@ export async function scanContentOpportunities(propertyId: string | number): Pro
   // Find unique keywords in striking distance
   const processedKeywords = new Set<string>();
   for (const snap of keywordSnaps) {
-    if (processedKeywords.has(snap.trackedKeyword.keyword)) continue;
+    if (!snap.trackedKeyword || processedKeywords.has(snap.trackedKeyword.keyword)) continue;
     
     const pos = snap.position || 99;
     const ctr = snap.ctr || 0.0;
@@ -146,7 +146,7 @@ export async function scanContentOpportunities(propertyId: string | number): Pro
   });
 
   for (const kw of keywords) {
-    if (kw.snapshots.length >= 2) {
+    if (kw.snapshots && kw.snapshots.length >= 2) {
       const latest = kw.snapshots[0].position || 99;
       const prev = kw.snapshots[1].position || 99;
 

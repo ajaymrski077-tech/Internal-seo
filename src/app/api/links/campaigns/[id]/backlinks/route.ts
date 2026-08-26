@@ -95,7 +95,7 @@ export async function POST(
       user.email,
       "LINK_BACKLINK_CREATED",
       campaign.clientId,
-      campaign.client.name,
+      campaign.client?.name || "Client",
       { campaignId: id, campaignName: campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain }
     );
 

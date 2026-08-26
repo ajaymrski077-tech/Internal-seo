@@ -62,11 +62,11 @@ export async function PATCH(
       await logLinkActivity(
         user.email,
         "LINK_OPPORTUNITY_STATUS_CHANGED",
-        opportunity.campaign.clientId,
-        opportunity.campaign.client.name,
+        opportunity.campaign?.clientId || "",
+        opportunity.campaign?.client?.name || "Client",
         {
           campaignId: opportunity.campaignId,
-          campaignName: opportunity.campaign.name,
+          campaignName: opportunity.campaign?.name || "",
           opportunityId: opportunity.id,
           websiteName: opportunity.websiteName,
           oldStatus: opportunity.status,
@@ -119,12 +119,10 @@ export async function DELETE(
     await logLinkActivity(
       user.email,
       "LINK_OPPORTUNITY_DELETED",
-      opportunity.campaign.clientId,
-      opportunity.campaign.client.name,
-      { campaignId: opportunity.campaignId, campaignName: opportunity.campaign.name, opportunityId: opportunity.id, websiteName: opportunity.websiteName }
+      opportunity.campaign?.clientId || "",
+      opportunity.campaign?.client?.name || "Client",
+      { campaignId: opportunity.campaignId, campaignName: opportunity.campaign?.name || "", opportunityId: opportunity.id, websiteName: opportunity.websiteName }
     );
-
-    return NextResponse.json({ success: true });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

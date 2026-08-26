@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Property not found" }, { status: 404 });
     }
 
-    const gscConn = property.connections[0];
+    const gscConn = property.connections?.[0];
     if (!gscConn || !gscConn.externalId) {
       return NextResponse.json({ error: "Google Search Console is not connected for this property." }, { status: 400 });
     }

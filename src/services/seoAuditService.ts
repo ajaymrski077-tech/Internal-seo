@@ -126,8 +126,8 @@ async function runAuditInBackground(
       : `https://${property.domain}`;
 
     const pageScores: number[] = [];
-    const titleSet = new Map<string, number[]>(); // title -> pageIds
-    const metaDescSet = new Map<string, number[]>(); // desc -> pageIds
+    const titleSet = new Map<string, Array<string | number>>(); // title -> pageIds
+    const metaDescSet = new Map<string, Array<string | number>>(); // desc -> pageIds
 
     // Crawl the site
     const result = await crawlSite(rootUrl, config, {
@@ -301,8 +301,8 @@ async function runAuditInBackground(
     });
 
     const countMap: Record<string, number> = {};
-    for (const row of issueCounts) {
-      countMap[row.severity] = row._count.id;
+    for (const row of (issueCounts as unknown as Array<{ severity: string; _count: { id: number } }>)) {
+      countMap[row.severity] = row._count?.id || 0;
     }
 
     const finalScore = calculateSiteScore(pageScores);
@@ -323,15 +323,17 @@ async function runAuditInBackground(
         endTime: new Date(),
       },
     });
+
+    console.log(`[SEO Audit ${auditId}] Completed. Pages: ${result.pagesCrawled}/${result.pagesDiscovered}, Score: ${finalScore}`);
   } catch (err: unknown) {
-    const errorObj = err as Error;
+    const errObj = err as Error;
     console.error(`[SEO Audit ${auditId}] Fatal error:`, err);
     try {
       await prisma.seoAudit.update({
         where: { id: auditId },
         data: {
           status: "FAILED",
-          errorMessage: errorObj?.message || "Unknown error",
+          errorMessage: errObj?.message || "Unknown error",
           endTime: new Date(),
         },
       });
@@ -443,9 +445,9 @@ export async function getAuditById(auditId: string | number): Promise<AuditSumma
     issuesInfo: a.issuesInfo,
     startTime: a.startTime?.toISOString() || null,
     endTime: a.endTime?.toISOString() || null,
-    createdAt: a.createdAt.toISOString(),
-    domain: a.property.domain,
-    clientName: a.property.client.name,
+    createdAt: a.createdAt?.toISOString?.() || new Date(a.createdAt).toISOString(),
+    domain: a.property?.domain || "Domain",
+    clientName: a.property?.client?.name || "Client",
     errorMessage: a.errorMessage,
   };
 }

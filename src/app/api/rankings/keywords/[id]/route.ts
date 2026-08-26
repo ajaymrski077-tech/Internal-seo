@@ -100,7 +100,7 @@ export async function PATCH(
         user.email,
         act,
         keywordObj.clientId,
-        keywordObj.client.name,
+        keywordObj.client?.name || "Unknown",
         { keywordId: id, keyword: keywordObj.keyword }
       );
     } else {
@@ -108,7 +108,7 @@ export async function PATCH(
         user.email,
         "KEYWORD_UPDATED",
         keywordObj.clientId,
-        keywordObj.client.name,
+        keywordObj.client?.name || "Unknown",
         { keywordId: id, keyword: keywordObj.keyword }
       );
     }
@@ -156,7 +156,7 @@ export async function DELETE(
       user.email,
       "KEYWORD_DELETED",
       keywordObj.clientId,
-      keywordObj.client.name,
+      keywordObj.client?.name || "Unknown",
       { keywordId: id, keyword: keywordObj.keyword }
     );
 

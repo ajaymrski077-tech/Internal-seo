@@ -25,7 +25,7 @@ export async function PATCH(
       include: {
         campaign: { include: { client: true } }
       }
-    });
+    } as any);
 
     if (!placement) {
       return NextResponse.json({ error: "Placement record not found" }, { status: 404 });
@@ -54,9 +54,9 @@ export async function PATCH(
     await logPrActivity(
       user.email,
       "PR_PLACEMENT_UPDATED",
-      placement.campaign.clientId,
-      placement.campaign.client.name,
-      { campaignId: placement.campaignId, campaignName: placement.campaign.campaignName, placementId: placement.id, publicationName: updated.publicationName }
+      placement.campaign?.clientId || "",
+      placement.campaign?.client?.name || "Client",
+      { campaignId: placement.campaignId, campaignName: placement.campaign?.campaignName || "", placementId: placement.id, publicationName: updated.publicationName }
     );
 
     return NextResponse.json(updated);
@@ -103,9 +103,9 @@ export async function DELETE(
     await logPrActivity(
       user.email,
       "PR_PLACEMENT_DELETED",
-      placement.campaign.clientId,
-      placement.campaign.client.name,
-      { campaignId: placement.campaignId, campaignName: placement.campaign.campaignName, placementId: placement.id, publicationName: placement.publicationName }
+      placement.campaign?.clientId || "",
+      placement.campaign?.client?.name || "Client",
+      { campaignId: placement.campaignId, campaignName: placement.campaign?.campaignName || "", placementId: placement.id, publicationName: placement.publicationName }
     );
 
     return NextResponse.json({ success: true });

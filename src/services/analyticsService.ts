@@ -98,16 +98,18 @@ export const getPortfolioTotals = async (
     },
   });
 
+  const currentAggSum = (currentAgg._sum as { sessions?: number; organicTraffic?: number; conversions?: number; }) || {};
   const currSum = {
-    sessions: currentAgg._sum?.sessions || 0,
-    organicTraffic: currentAgg._sum?.organicTraffic || 0,
-    conversions: currentAgg._sum?.conversions || 0,
+    sessions: currentAggSum.sessions || 0,
+    organicTraffic: currentAggSum.organicTraffic || 0,
+    conversions: currentAggSum.conversions || 0,
   };
 
+  const prevAggSum = (prevAgg._sum as { sessions?: number; organicTraffic?: number; conversions?: number; }) || {};
   const prevSum = {
-    sessions: prevAgg._sum?.sessions || 0,
-    organicTraffic: prevAgg._sum?.organicTraffic || 0,
-    conversions: prevAgg._sum?.conversions || 0,
+    sessions: prevAggSum.sessions || 0,
+    organicTraffic: prevAggSum.organicTraffic || 0,
+    conversions: prevAggSum.conversions || 0,
   };
 
   return {
@@ -174,16 +176,18 @@ export const getClientTotals = async (
     },
   });
 
+  const currentAggSum = (currentAgg._sum as { sessions?: number; organicTraffic?: number; conversions?: number; }) || {};
   const currSum = {
-    sessions: currentAgg._sum?.sessions || 0,
-    organicTraffic: currentAgg._sum?.organicTraffic || 0,
-    conversions: currentAgg._sum?.conversions || 0,
+    sessions: currentAggSum.sessions || 0,
+    organicTraffic: currentAggSum.organicTraffic || 0,
+    conversions: currentAggSum.conversions || 0,
   };
 
+  const prevAggSum = (prevAgg._sum as { sessions?: number; organicTraffic?: number; conversions?: number; }) || {};
   const prevSum = {
-    sessions: prevAgg._sum?.sessions || 0,
-    organicTraffic: prevAgg._sum?.organicTraffic || 0,
-    conversions: prevAgg._sum?.conversions || 0,
+    sessions: prevAggSum.sessions || 0,
+    organicTraffic: prevAggSum.organicTraffic || 0,
+    conversions: prevAggSum.conversions || 0,
   };
 
   return {
@@ -252,15 +256,15 @@ export const getClientHistory = async (
 import { getGa4Client, getGscClient, getDecryptedCredentials } from "./googleApiService";
 import { syncPropertyKeywords } from "./rankingsService";
 
-export const syncPropertyData = async (propertyId: number, daysToSync: number = 30) => {
+export const syncPropertyData = async (propertyId: string | number, daysToSync: number = 30) => {
   const property = await prisma.websiteProperty.findUnique({
     where: { id: propertyId },
     include: { connections: true }
   });
   if (!property) throw new Error("Property not found");
 
-  const ga4Conn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
-  const gscConn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
+  const ga4Conn = property.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+  const gscConn = property.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
   if (!ga4Conn && !gscConn) return;
 

@@ -83,7 +83,7 @@ export async function PATCH(
         user.email,
         "LINK_CAMPAIGN_STATUS_CHANGED",
         campaign.clientId,
-        campaign.client.name,
+        campaign.client?.name || "Client",
         { campaignId: campaign.id, campaignName: campaign.name, oldStatus: campaign.status, newStatus: status.toUpperCase() }
       );
     } else {
@@ -91,7 +91,7 @@ export async function PATCH(
         user.email,
         "LINK_CAMPAIGN_UPDATED",
         campaign.clientId,
-        campaign.client.name,
+        campaign.client?.name || "Client",
         { campaignId: campaign.id, campaignName: campaign.name }
       );
     }
@@ -139,7 +139,7 @@ export async function DELETE(
       user.email,
       "LINK_CAMPAIGN_DELETED",
       campaign.clientId,
-      campaign.client.name,
+      campaign.client?.name || "Client",
       { campaignId: campaign.id, campaignName: campaign.name }
     );
 

@@ -53,9 +53,9 @@ export async function PATCH(
     await logLinkActivity(
       user.email,
       "LINK_BACKLINK_UPDATED",
-      backlink.campaign.clientId,
-      backlink.campaign.client.name,
-      { campaignId: backlink.campaignId, campaignName: backlink.campaign.name, backlinkId: backlink.id, sourceDomain: updated.sourceDomain }
+      backlink.campaign?.clientId || "",
+      backlink.campaign?.client?.name || "Client",
+      { campaignId: backlink.campaignId, campaignName: backlink.campaign?.name || "", backlinkId: backlink.id, sourceDomain: updated.sourceDomain }
     );
 
     return NextResponse.json(updated);
@@ -102,9 +102,9 @@ export async function DELETE(
     await logLinkActivity(
       user.email,
       "LINK_BACKLINK_DELETED",
-      backlink.campaign.clientId,
-      backlink.campaign.client.name,
-      { campaignId: backlink.campaignId, campaignName: backlink.campaign.name, backlinkId: backlink.id, sourceDomain: backlink.sourceDomain }
+      backlink.campaign?.clientId || "",
+      backlink.campaign?.client?.name || "Client",
+      { campaignId: backlink.campaignId, campaignName: backlink.campaign?.name || "", backlinkId: backlink.id, sourceDomain: backlink.sourceDomain }
     );
 
     return NextResponse.json({ success: true });

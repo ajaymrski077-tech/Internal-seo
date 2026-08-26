@@ -317,7 +317,7 @@ export const updateClientDetails = async (
     // Handle domain updates
     if (data.domain !== undefined) {
       const normalized = normalizeDomain(data.domain);
-      const primaryProperty = original.properties[0];
+      const primaryProperty = original.properties?.[0];
 
       // Check duplicate domain
       const duplicate = await tx.websiteProperty.findFirst({

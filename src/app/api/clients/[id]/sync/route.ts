@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     });
 
-    if (!client || client.properties.length === 0) {
+    if (!client || !client.properties || client.properties.length === 0) {
       return NextResponse.json({ error: "No property configured for this client." }, { status: 400 });
     }
 

@@ -57,11 +57,11 @@ export async function PATCH(
       await logPrActivity(
         user.email,
         "PR_OUTREACH_STATUS_CHANGED",
-        outreach.campaign.clientId,
-        outreach.campaign.client.name,
+        outreach.campaign?.clientId || "",
+        outreach.campaign?.client?.name || "Client",
         {
           campaignId: outreach.campaignId,
-          campaignName: outreach.campaign.campaignName,
+          campaignName: outreach.campaign?.campaignName || "",
           outreachId: outreach.id,
           publicationName: outreach.publicationName,
           oldStatus: outreach.outreachStatus,
@@ -114,9 +114,9 @@ export async function DELETE(
     await logPrActivity(
       user.email,
       "PR_OUTREACH_DELETED",
-      outreach.campaign.clientId,
-      outreach.campaign.client.name,
-      { campaignId: outreach.campaignId, campaignName: outreach.campaign.campaignName, outreachId: outreach.id, publicationName: outreach.publicationName }
+      outreach.campaign?.clientId || "",
+      outreach.campaign?.client?.name || "Client",
+      { campaignId: outreach.campaignId, campaignName: outreach.campaign?.campaignName || "", outreachId: outreach.id, publicationName: outreach.publicationName }
     );
 
     return NextResponse.json({ success: true });

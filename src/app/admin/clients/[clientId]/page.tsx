@@ -1730,37 +1730,57 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
                   </div>
                 ) : (
                   <form onSubmit={handleSaveGSCSite} className={styles.setupForm}>
-                    <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                      <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>Discovered GSC Properties</label>
-                      {loadingGscSites ? (
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                          <div className={styles.spinner} style={{ width: 14, height: 14 }} />
-                          Discovering accessible sites...
+                    {gscDiscError && gscDiscError.toLowerCase().includes("access token") ? (
+                      <div style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.25)", padding: "12px", borderRadius: "6px", marginBottom: "16px" }}>
+                        <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "6px", fontWeight: "600" }}>
+                          ⚠️ Google Search Console Authentication Required
                         </div>
-                      ) : gscDiscError ? (
-                        <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "8px" }}>
-                          ⚠️ {gscDiscError}
-                        </div>
-                      ) : discoveredGscSites.length === 0 ? (
-                        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "8px" }}>
-                          No verified sites found in this Google account.
-                        </div>
-                      ) : (
-                        <select
-                          className={styles.formInput}
-                          value={gscDomainUrl}
-                          onChange={(e) => setGscDomainUrl(e.target.value)}
-                          style={{ width: "100%", padding: "8px", borderRadius: "4px", background: "var(--bg-input)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "10px" }}>
+                          An active Google OAuth access token is required to list and query Search Console properties.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleConnectGSCOAuth}
+                          className={styles.btnActionPrimary}
+                          style={{ fontSize: "0.85rem", padding: "6px 14px", cursor: "pointer" }}
+                          disabled={isConnectingGSC}
                         >
-                          <option value="">-- Choose GSC Site --</option>
-                          {discoveredGscSites.map((s) => (
-                            <option key={s.siteUrl} value={s.siteUrl}>
-                              {s.siteUrl} ({s.permissionLevel})
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
+                          {isConnectingGSC ? "Redirecting..." : "🔑 Authenticate with Google"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>Discovered GSC Properties</label>
+                        {loadingGscSites ? (
+                          <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                            <div className={styles.spinner} style={{ width: 14, height: 14 }} />
+                            Discovering accessible sites...
+                          </div>
+                        ) : gscDiscError ? (
+                          <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "8px" }}>
+                            ⚠️ {gscDiscError}
+                          </div>
+                        ) : discoveredGscSites.length === 0 ? (
+                          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "8px" }}>
+                            No verified sites found in this Google account.
+                          </div>
+                        ) : (
+                          <select
+                            className={styles.formInput}
+                            value={gscDomainUrl}
+                            onChange={(e) => setGscDomainUrl(e.target.value)}
+                            style={{ width: "100%", padding: "8px", borderRadius: "4px", background: "var(--bg-input)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
+                          >
+                            <option value="">-- Choose GSC Site --</option>
+                            {discoveredGscSites.map((s) => (
+                              <option key={s.siteUrl} value={s.siteUrl}>
+                                {s.siteUrl} ({s.permissionLevel})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    )}
 
                     <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
                       <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>GSC Property / Domain URL (Manual Override)</label>
@@ -1775,7 +1795,7 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
                       <small>Enter or select the verified site property URL prefix or sc-domain prefix.</small>
                     </div>
 
-                    <div className={styles.formActions} style={{ display: "flex", gap: "12px", marginTop: "32px" }}>
+                    <div className={styles.formActions} style={{ display: "flex", gap: "12px", marginTop: "32px", flexWrap: "wrap" }}>
                       <button
                         type="submit"
                         className={styles.btnActionPrimary}
@@ -1783,6 +1803,16 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
                         disabled={isConnectingGSC}
                       >
                         {isConnectingGSC ? "Saving..." : "Save GSC Configuration"}
+                      </button>
+
+                      <button
+                        type="button"
+                        className={styles.btnActionSecondary}
+                        style={{ cursor: "pointer" }}
+                        onClick={handleConnectGSCOAuth}
+                        disabled={isConnectingGSC}
+                      >
+                        {isConnectingGSC ? "Redirecting..." : "Re-authenticate Google"}
                       </button>
 
                       <button

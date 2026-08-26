@@ -92,7 +92,7 @@ export async function POST(
       user.email,
       "PR_PLACEMENT_ADDED",
       campaign.clientId,
-      campaign.client.name,
+      campaign.client?.name || "Client",
       { campaignId: id, campaignName: campaign.campaignName, placementId: placement.id, publicationName: placement.publicationName, articleTitle: placement.articleTitle }
     );
 

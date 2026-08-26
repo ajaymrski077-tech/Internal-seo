@@ -97,7 +97,7 @@ export async function POST(
       user.email,
       "LINK_OPPORTUNITY_CREATED",
       campaign.clientId,
-      campaign.client.name,
+      campaign.client?.name || "Client",
       { campaignId: id, campaignName: campaign.name, opportunityId: opportunity.id, websiteName: opportunity.websiteName }
     );
 

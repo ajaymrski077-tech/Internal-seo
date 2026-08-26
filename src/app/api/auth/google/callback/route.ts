@@ -115,6 +115,28 @@ export async function GET(req: NextRequest) {
         });
       }
 
+      // If provider is GA4 or GSC, also share tokens with sibling provider if it exists
+      if (provider === "GA4" || provider === "GSC") {
+        const siblingProvider = provider === "GA4" ? "GSC" : "GA4";
+        const sibling = await tx.integrationConnection.findFirst({
+          where: { propertyId: property.id, provider: siblingProvider },
+        });
+        if (sibling && (!sibling.accessToken || sibling.status === "DISCONNECTED")) {
+          await tx.integrationConnection.update({
+            where: { id: sibling.id },
+            data: {
+              status: "CONNECTED",
+              accessToken: access_token ? encryptToken(access_token) : null,
+              ...(refresh_token && { refreshToken: encryptToken(refresh_token) }),
+              tokenExpiry: expiry_date ? new Date(expiry_date) : null,
+              lastSyncTime: new Date(),
+              syncStatus: "SUCCESS",
+              syncError: null,
+            }
+          });
+        }
+      }
+
       // Log activity
       await tx.activityLog.create({
         data: {

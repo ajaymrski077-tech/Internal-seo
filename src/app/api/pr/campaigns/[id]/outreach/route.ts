@@ -138,7 +138,7 @@ export async function POST(
       user.email,
       "PR_OUTREACH_ADDED",
       campaign.clientId,
-      campaign.client.name,
+      campaign.client?.name || "Client",
       { campaignId: id, campaignName: campaign.campaignName, outreachId: outreach.id, publicationName: pubNameTrimmed }
     );
 

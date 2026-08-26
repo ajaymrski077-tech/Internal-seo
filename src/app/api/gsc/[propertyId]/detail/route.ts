@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
     });
 
     if (!property) return NextResponse.json({ error: "Property not found" }, { status: 404 });
-    const gscConn = property.connections[0];
+    const gscConn = property.connections?.[0];
     if (!gscConn || !gscConn.externalId) {
       return NextResponse.json({ error: "GSC is not connected." }, { status: 400 });
     }
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
     const prevStartStr = prevStartDate.toISOString().split("T")[0];
     const prevEndStr = prevEndDate.toISOString().split("T")[0];
 
-    const brandName = property.client.name.toLowerCase().split(" ")[0];
+    const brandName = (property.client?.name || property.domain).toLowerCase().split(" ")[0];
     
     let dimensionFilterGroups: Array<{ filters: Array<{ dimension: string; operator: string; expression: string }> }> | undefined = undefined;
     if (brandFilter === "branded") {
@@ -323,7 +323,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prop
         property: {
           id: property.id,
           domain: property.domain,
-          clientName: property.client.name,
+          clientName: property.client?.name || "Client",
         },
         metrics: {
           totalClicks: clicks,
