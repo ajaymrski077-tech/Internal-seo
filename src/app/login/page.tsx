@@ -91,10 +91,10 @@ function LoginForm() {
 
         setSuccess("Account created successfully! Redirecting...");
         setTimeout(() => {
-          const nextRoute = searchParams.get("from") || "/admin";
-          router.push(nextRoute);
-          router.refresh();
-        }, 800);
+          const rawFrom = searchParams.get("from");
+          const targetRoute = rawFrom && rawFrom.startsWith("/") ? decodeURIComponent(rawFrom) : "/admin";
+          window.location.href = targetRoute;
+        }, 500);
       } else {
         const res = await fetch("/api/auth", {
           method: "POST",
@@ -107,9 +107,9 @@ function LoginForm() {
           throw new Error(data.error || "Invalid email or password.");
         }
 
-        const nextRoute = searchParams.get("from") || "/admin";
-        router.push(nextRoute);
-        router.refresh();
+        const rawFrom = searchParams.get("from");
+        const targetRoute = rawFrom && rawFrom.startsWith("/") ? decodeURIComponent(rawFrom) : "/admin";
+        window.location.href = targetRoute;
       }
     } catch (err: unknown) {
       const errObj = err as Error;

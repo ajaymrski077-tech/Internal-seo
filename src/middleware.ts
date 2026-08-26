@@ -21,8 +21,7 @@ export async function middleware(request: NextRequest) {
   // Protect /api routes
   if (pathname.startsWith("/api")) {
     const isPublicApi =
-      pathname === "/api/auth" ||
-      pathname.startsWith("/api/auth/google/callback") ||
+      pathname.startsWith("/api/auth") ||
       pathname.startsWith("/api/cron/sync") ||
       pathname.startsWith("/api/share");
     if (!isPublicApi) {
