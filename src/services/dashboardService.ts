@@ -249,7 +249,7 @@ export const getDashboardData = async (
 
     let metrics: MetricDelta | null = null;
     let history = { current: [] as HistoryDataPoint[], previous: [] as HistoryDataPoint[] };
-    let deliveries: DeliveryDetail[] = deliveriesByClient[client.id] || [];
+    const deliveries: DeliveryDetail[] = deliveriesByClient[client.id] || [];
 
     if (hasGA4 || hasGSC) {
       let currSessions = 0;

@@ -277,7 +277,7 @@ async function fetchPage(
 ): Promise<CrawledPage> {
   const startTime = Date.now();
   const redirectChain: string[] = [];
-  let currentUrl = url;
+  const currentUrl = url;
   let statusCode: number | null = null;
   let html = "";
   let contentType: string | null = null;

@@ -12,7 +12,6 @@ import {
   CrawlConfig,
   DEFAULT_CRAWL_CONFIG,
   CrawledPage,
-  normalizeUrl,
   extractLinks,
 } from "./crawlerService";
 import {
@@ -20,7 +19,6 @@ import {
   detectIssues,
   calculatePageScore,
   calculateSiteScore,
-  SeoIssueRecord,
 } from "./seoAnalyzerService";
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -280,7 +278,7 @@ async function runAuditInBackground(
       }
     }
 
-    for (const [desc, pageIds] of metaDescSet) {
+    for (const [, pageIds] of metaDescSet) {
       if (pageIds.length > 1) {
         await prisma.seoIssue.createMany({
           data: pageIds.map((pageId) => ({
@@ -325,14 +323,15 @@ async function runAuditInBackground(
         endTime: new Date(),
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorObj = err as Error;
     console.error(`[SEO Audit ${auditId}] Fatal error:`, err);
     try {
       await prisma.seoAudit.update({
         where: { id: auditId },
         data: {
           status: "FAILED",
-          errorMessage: err.message || "Unknown error",
+          errorMessage: errorObj?.message || "Unknown error",
           endTime: new Date(),
         },
       });
@@ -366,7 +365,7 @@ export async function getAudits(filters: {
   clientId?: string | number;
   status?: string;
 }): Promise<AuditSummary[]> {
-  const where: any = {};
+  const where: Record<string, unknown> = {};
 
   if (filters.propertyId) {
     where.propertyId = filters.propertyId;
@@ -393,7 +392,7 @@ export async function getAudits(filters: {
     take: 50,
   });
 
-  return audits.map((a: any) => ({
+  return audits.map((a) => ({
     id: a.id,
     propertyId: a.propertyId,
     status: a.status,
@@ -460,7 +459,7 @@ export async function getAuditPages(
   const take = Math.min(options.limit || 50, 100);
   const skip = ((options.page || 1) - 1) * take;
 
-  const where: any = { auditId };
+  const where: Record<string, unknown> = { auditId };
 
   if (options.search) {
     where.url = { contains: options.search };
@@ -490,7 +489,7 @@ export async function getAuditPages(
   ]);
 
   return {
-    pages: pages.map((p: any) => ({
+    pages: pages.map((p) => ({
       id: p.id,
       url: p.url,
       statusCode: p.statusCode,
@@ -527,7 +526,7 @@ export async function getAuditIssues(
   const take = Math.min(options.limit || 50, 100);
   const skip = ((options.page || 1) - 1) * take;
 
-  const where: any = { auditId };
+  const where: Record<string, unknown> = { auditId };
   if (options.severity) where.severity = options.severity;
   if (options.type) where.type = options.type;
 
@@ -548,7 +547,7 @@ export async function getAuditIssues(
   ]);
 
   return {
-    issues: issues.map((i: any) => ({
+    issues: issues.map((i) => ({
       id: i.id,
       type: i.type,
       severity: i.severity,

@@ -9,7 +9,7 @@ export const getPrOverview = async (clientId?: string | number) => {
       where: { clientId: clientId.toString() },
       select: { id: true }
     });
-    campaignIds = campaigns.map((c: any) => c.id);
+    campaignIds = campaigns.map((c) => c.id);
   }
 
   const campaignWhere = clientId ? { clientId: clientId.toString() } : {};
@@ -196,7 +196,7 @@ export const logPrActivity = async (
   action: string,
   clientId: string | number,
   clientName: string,
-  metadata: any
+  metadata: unknown
 ) => {
   try {
     await prisma.activityLog.create({

@@ -6,12 +6,14 @@ import { syncPropertyData } from "@/services/analyticsService";
 // to automatically sync all active client data every night.
 export async function GET(req: NextRequest) {
   try {
-    // Basic security: require a CRON_SECRET if it's defined in the environment.
-    // If not defined, we'll allow it for local testing, but in production it should be set.
-    const authHeader = req.headers.get("authorization");
+    // Enforce CRON_SECRET unconditionally in all environments
     const cronSecret = process.env.CRON_SECRET;
-    
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret) {
+      return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 500 });
+    }
+
+    const authHeader = req.headers.get("authorization");
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: "Unauthorized cron execution" }, { status: 401 });
     }
 

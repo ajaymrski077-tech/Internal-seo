@@ -77,7 +77,7 @@ export const getDecryptedCredentials = async (connectionId: number) => {
         refreshToken = credentials.refresh_token;
         needsUpdate = true;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`[AUTH] Failed to refresh tokens for connection ${connectionId}:`, err);
     }
   }
@@ -101,10 +101,10 @@ export const getDecryptedCredentials = async (connectionId: number) => {
 /**
  * Setup backup auto-refresh listener on clients.
  */
-const setupRefreshListener = (client: any, connectionId: number) => {
-  client.on("tokens", async (tokens: any) => {
+const setupRefreshListener = (client: InstanceType<typeof google.auth.OAuth2>, connectionId: number) => {
+  client.on("tokens", async (tokens) => {
     try {
-      const updateData: any = {};
+      const updateData: { accessToken?: string; refreshToken?: string; tokenExpiry?: Date; lastSyncTime?: Date } = {};
       if (tokens.access_token) {
         updateData.accessToken = encryptToken(tokens.access_token);
       }
@@ -123,7 +123,7 @@ const setupRefreshListener = (client: any, connectionId: number) => {
         });
         console.log(`[AUTH] Event-driven writeback: saved refreshed credentials for connection ${connectionId}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`[AUTH] Failed to save credentials refreshed by event:`, err);
     }
   });

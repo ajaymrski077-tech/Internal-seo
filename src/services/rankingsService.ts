@@ -1,6 +1,7 @@
 import prisma from "@/lib/db";
 import { getGscClient, getDecryptedCredentials } from "./googleApiService";
 import { getPreviousPeriodDates } from "./analyticsService";
+import { IntegrationConnectionRecord, TrackedKeywordRecord, KeywordRankingSnapshotRecord } from "@/types/db";
 
 // ====================================================
 // RANKINGS SERVICE BUSINESS LOGIC
@@ -32,7 +33,7 @@ export const discoverKeywords = async (
   });
   if (!property) throw new Error("Property not found");
 
-  const gscConn = property.connections.find((c: any) => c.provider === "GSC");
+  const gscConn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
   if (!gscConn || !gscConn.externalId) {
     return [];
   }
@@ -84,7 +85,7 @@ export const discoverKeywords = async (
     if (q) prevMap[q.toLowerCase().trim()] = row;
   }
 
-  const trackedSet = new Set(property.trackedKeywords.map((k: any) => k.normalizedKeyword));
+  const trackedSet = new Set(property.trackedKeywords.map((k: TrackedKeywordRecord) => k.normalizedKeyword));
 
   const result: DiscoveredKeyword[] = [];
 
@@ -194,7 +195,7 @@ export const trackKeyword = async (
       where: { id: propertyId },
       include: { connections: true }
     });
-    const gscConn = property?.connections?.find((c: any) => c.provider === "GSC");
+    const gscConn = property?.connections?.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
     if (gscConn && gscConn.externalId) {
       await syncPropertyKeywords(propertyId, 30);
     }
@@ -220,7 +221,7 @@ export const syncPropertyKeywords = async (
 
   if (!property || property.trackedKeywords.length === 0) return;
 
-  const gscConn = property.connections.find((c: any) => c.provider === "GSC");
+  const gscConn = property.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
   if (!gscConn || !gscConn.externalId) return;
 
   const endDate = new Date();
@@ -353,7 +354,7 @@ export const getRankingsOverview = async (
   const prevCutoff = new Date();
   prevCutoff.setDate(currentCutoff.getDate() - daysRange);
 
-  let totalTracked = keywords.length;
+  const totalTracked = keywords.length;
   let avgCurrentPosSum = 0;
   let avgCurrentPosCount = 0;
 
@@ -408,9 +409,9 @@ export const getRankingsOverview = async (
     }
 
     // Get current value (latest snapshot close to today)
-    const currentSnap = snaps.filter((s: any) => s.position !== null && s.position > 0).pop();
+    const currentSnap = snaps.filter((s: KeywordRankingSnapshotRecord) => s.position !== null && s.position > 0).pop();
     // Get previous period comparator
-    const prevSnap = snaps.filter((s: any) => s.date < prevCutoff && s.position !== null && s.position > 0).pop();
+    const prevSnap = snaps.filter((s: KeywordRankingSnapshotRecord) => s.date < prevCutoff && s.position !== null && s.position > 0).pop();
 
     if (!currentSnap || currentSnap.position === null) {
       positionGroups.missing++;
@@ -537,7 +538,7 @@ export const logRankingActivity = async (
   action: string,
   clientId: string | number,
   clientName: string,
-  metadata: any
+  metadata: unknown
 ) => {
   try {
     await prisma.activityLog.create({

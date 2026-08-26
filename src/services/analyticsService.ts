@@ -312,11 +312,12 @@ export const syncPropertyData = async (propertyId: number, daysToSync: number = 
           data: { syncStatus: "SUCCESS", lastSyncTime: new Date() }
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as Error;
       console.error("GA4 Sync Error:", err);
       await prisma.integrationConnection.update({
         where: { id: ga4Conn.id },
-        data: { syncStatus: "FAILED", syncError: err.message, status: "SYNC_ERROR" }
+        data: { syncStatus: "FAILED", syncError: errorObj?.message || "GA4 Sync Error", status: "SYNC_ERROR" }
       });
     }
   }
@@ -332,8 +333,8 @@ export const syncPropertyData = async (propertyId: number, daysToSync: number = 
           siteUrl: gscConn.externalId,
           requestBody: {
             startDate: startDate.toISOString().split("T")[0],
-            endDate: endDate.toISOString().split("T")[0],
-            dimensions: ["date"]
+            endDate: "today",
+            dimensions: ["date"],
           }
         });
 
@@ -361,11 +362,12 @@ export const syncPropertyData = async (propertyId: number, daysToSync: number = 
           console.error("Failed to sync property keywords:", kwErr);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorObj = err as Error;
       console.error("GSC Sync Error:", err);
       await prisma.integrationConnection.update({
         where: { id: gscConn.id },
-        data: { syncStatus: "FAILED", syncError: err.message, status: "SYNC_ERROR" }
+        data: { syncStatus: "FAILED", syncError: errorObj?.message || "GSC Sync Error", status: "SYNC_ERROR" }
       });
     }
   }

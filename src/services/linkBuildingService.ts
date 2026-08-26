@@ -90,7 +90,7 @@ export const getLinkOverview = async (clientId?: string | number) => {
       where: { clientId: clientId.toString() },
       select: { id: true }
     });
-    campaignIds = campaigns.map((c: any) => c.id);
+    campaignIds = campaigns.map((c) => c.id);
   }
 
   const campaignWhere = clientId ? { clientId: clientId.toString() } : {};
@@ -307,7 +307,7 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      const updated = await prisma.acquiredBacklink.update({
+      await prisma.acquiredBacklink.update({
         where: { id: backlinkId },
         data: {
           status: "BROKEN",
@@ -325,7 +325,7 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
     const targetUrlParsed = new URL(targetUrl);
     const targetDomain = targetUrlParsed.hostname.toLowerCase().replace("www.", "");
 
-    let foundLink: any = null;
+    let foundLink: { href?: string; anchorText: string; rel: string } | null = null;
 
     $("a").each((_, el) => {
       const href = $(el).attr("href");
@@ -347,7 +347,7 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
     });
 
     if (!foundLink) {
-      const updated = await prisma.acquiredBacklink.update({
+      await prisma.acquiredBacklink.update({
         where: { id: backlinkId },
         data: {
           status: "MISSING",
@@ -358,8 +358,9 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
       return { status: "MISSING" };
     }
 
-    const rels = foundLink.rel.toLowerCase();
-    let status = "LIVE";
+    const currentFoundLink = foundLink as { href?: string; anchorText: string; rel: string };
+    const rels = currentFoundLink.rel.toLowerCase();
+    const status = "LIVE";
     let linkType = "FOLLOW";
 
     if (rels.includes("nofollow")) {
@@ -371,10 +372,10 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
     }
 
     // Update DB
-    const dataToUpdate: any = {
+    const dataToUpdate: Record<string, unknown> = {
       status,
       linkType,
-      anchorText: foundLink.anchorText,
+      anchorText: currentFoundLink.anchorText,
       lastCheckedAt: new Date(),
       notes: `Link verified live on ${new Date().toLocaleDateString()}`,
     };
@@ -383,7 +384,7 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
       dataToUpdate.firstVerifiedAt = new Date();
     }
 
-    const updated = await prisma.acquiredBacklink.update({
+    await prisma.acquiredBacklink.update({
       where: { id: backlinkId },
       data: dataToUpdate,
     });
@@ -391,17 +392,18 @@ export const verifyAcquiredBacklink = async (backlinkId: string | number) => {
     return {
       status,
       linkType,
-      anchorText: foundLink.anchorText,
-      relAttributes: foundLink.rel,
+      anchorText: currentFoundLink.anchorText,
+      relAttributes: currentFoundLink.rel,
       finalUrl,
     };
-  } catch (err: any) {
-    let errorMsg = err.message || "Failed to fetch source page";
-    if (err.name === "AbortError") {
+  } catch (err: unknown) {
+    const errorObj = err as Error;
+    let errorMsg = errorObj?.message || "Failed to fetch source page";
+    if (errorObj?.name === "AbortError") {
       errorMsg = "Request timed out after 8s limit.";
     }
 
-    const updated = await prisma.acquiredBacklink.update({
+    await prisma.acquiredBacklink.update({
       where: { id: backlinkId },
       data: {
         status: "UNKNOWN",

@@ -4,8 +4,9 @@ import { getClientDeliveries } from "@/services/deliveryService";
 import { parseRangeCode } from "@/services/dashboardService";
 import crypto from "crypto";
 import { getRankingsOverview } from "./rankingsService";
+import { IntegrationConnectionRecord } from "@/types/db";
 
-const db = prisma as any;
+const db = prisma;
 
 export interface ReportConfigInput {
   clientId: string | number;
@@ -41,7 +42,7 @@ export const getReportsList = async (params: {
   const skip = (page - 1) * pageSize;
 
   // Build prisma where clause
-  const whereClause: any = {
+  const whereClause: Record<string, unknown> = {
     isArchived,
   };
 
@@ -55,14 +56,14 @@ export const getReportsList = async (params: {
 
   if (search.trim()) {
     whereClause.OR = [
-      { name: { contains: search, signup: "insensitive" } as any },
-      { client: { name: { contains: search, signup: "insensitive" } as any } },
-      { property: { domain: { contains: search, signup: "insensitive" } as any } },
+      { name: { contains: search } },
+      { client: { name: { contains: search } } },
+      { property: { domain: { contains: search } } },
     ];
   }
 
   // Sort logic mapping
-  let orderBy: any = { createdAt: "desc" };
+  let orderBy: Record<string, string | Record<string, string>> = { createdAt: "desc" };
   if (sort === "oldest") {
     orderBy = { createdAt: "asc" };
   } else if (sort === "updated") {
@@ -202,8 +203,8 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
       },
     });
 
-    const ga4Conn = primaryProperty?.connections.find((c: any) => c.provider === "GA4");
-    const gscConn = primaryProperty?.connections.find((c: any) => c.provider === "GSC");
+    const ga4Conn = primaryProperty?.connections.find((c: IntegrationConnectionRecord) => c.provider === "GA4");
+    const gscConn = primaryProperty?.connections.find((c: IntegrationConnectionRecord) => c.provider === "GSC");
 
     const hasGA4 = ga4Conn?.status === "CONNECTED" || ga4Conn?.status === "SYNC_ERROR";
     const hasGSC = gscConn?.status === "CONNECTED" || gscConn?.status === "SYNC_ERROR";
@@ -219,8 +220,8 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
     };
 
     let history = {
-      current: [] as any[],
-      previous: [] as any[],
+      current: [] as Array<{ date: string; sessions: number; organicTraffic: number; conversions: number }>,
+      previous: [] as Array<{ date: string; sessions: number; organicTraffic: number; conversions: number }>,
     };
 
     if (hasGA4 || hasGSC) {
@@ -237,7 +238,7 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
       // Fetch history timelines
       const currentHistory = await getClientHistory(report.clientId, start, end);
       
-      let prevHistory: any[] = [];
+      let prevHistory: Array<{ date: string; sessions: number; organicTraffic: number; conversions: number }> = [];
       if (report.comparisonRange !== "NONE") {
         const duration = end.getTime() - start.getTime();
         const prevStart = new Date(start.getTime() - duration);
@@ -279,8 +280,7 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
 
     // Save snapshot
     const snapshot = await prisma.$transaction(async (tx) => {
-      const dbTx = tx as any;
-      const snap = await dbTx.reportSnapshot.create({
+      const snap = await tx.reportSnapshot.create({
         data: {
           reportId,
           metricsJson: JSON.stringify(metrics),
@@ -291,7 +291,7 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
       });
 
       // Update report status
-      await dbTx.report.update({
+      await tx.report.update({
         where: { id: reportId },
         data: {
           status: "READY",
@@ -301,7 +301,7 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
       });
 
       // Log Activity
-      await dbTx.activityLog.create({
+      await tx.activityLog.create({
         data: {
           actorEmail,
           action: "REPORT_GENERATED",
@@ -315,7 +315,7 @@ export const generateReportSnapshot = async (reportId: string | number, actorEma
     });
 
     return snapshot;
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Report snapshot generation error:", err);
     await db.report.update({
       where: { id: reportId },
@@ -348,8 +348,7 @@ export const updateReportConfig = async (
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    const dbTx = tx as any;
-    const record = await dbTx.report.update({
+    const record = await tx.report.update({
       where: { id: reportId },
       data: {
         name: name || existing.name,
@@ -364,7 +363,7 @@ export const updateReportConfig = async (
     });
 
     // Log Activity
-    await dbTx.activityLog.create({
+    await tx.activityLog.create({
       data: {
         actorEmail,
         action: "REPORT_UPDATED",
@@ -410,14 +409,13 @@ export const archiveReport = async (reportId: string | number, actorEmail: strin
   if (!report) throw new Error("Report not found.");
 
   await prisma.$transaction(async (tx) => {
-    const dbTx = tx as any;
-    await dbTx.report.update({
+    await tx.report.update({
       where: { id: reportId },
       data: { isArchived: true },
     });
 
     // Log activity
-    await dbTx.activityLog.create({
+    await tx.activityLog.create({
       data: {
         actorEmail,
         action: "REPORT_ARCHIVED",
@@ -440,14 +438,13 @@ export const restoreReport = async (reportId: string | number, actorEmail: strin
   if (!report) throw new Error("Report not found.");
 
   await prisma.$transaction(async (tx) => {
-    const dbTx = tx as any;
-    await dbTx.report.update({
+    await tx.report.update({
       where: { id: reportId },
       data: { isArchived: false, status: "READY" },
     });
 
     // Log activity
-    await dbTx.activityLog.create({
+    await tx.activityLog.create({
       data: {
         actorEmail,
         action: "REPORT_RESTORED",
@@ -470,14 +467,13 @@ export const regenerateReportShareToken = async (reportId: string | number, acto
   if (!report) throw new Error("Report not found.");
 
   const updated = await prisma.$transaction(async (tx) => {
-    const dbTx = tx as any;
-    const record = await dbTx.report.update({
+    const record = await tx.report.update({
       where: { id: reportId },
       data: { shareToken: crypto.randomUUID() },
     });
 
     // Log activity
-    await dbTx.activityLog.create({
+    await tx.activityLog.create({
       data: {
         actorEmail,
         action: "SHARE_LINK_REGENERATED",

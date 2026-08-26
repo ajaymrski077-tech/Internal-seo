@@ -196,13 +196,14 @@ export async function syncGbpData(locationId: string | number, daysBack: number 
     });
 
     console.log(`[GBP SYNC] Finished GMB performance sync for Location ID ${locationId}`);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorObj = err as Error;
     console.error(`[GBP SYNC] Failed GMB performance sync for Location ID ${locationId}:`, err);
     await prisma.gbpLocation.update({
       where: { id: locationId },
       data: {
         syncStatus: "ERROR",
-        syncError: err.message || "Failed during Google GMB sync"
+        syncError: errorObj?.message || "Failed during Google GMB sync"
       }
     });
   }

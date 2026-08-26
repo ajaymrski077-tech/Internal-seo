@@ -20,7 +20,7 @@ export interface GbpLocationInfo {
 // ─── List Accounts ─────────────────────────────────────────────────
 
 export async function listGbpAccounts(connectionId: string | number): Promise<GbpAccount[]> {
-  const { accessToken } = await getDecryptedCredentials(connectionId as any);
+  const { accessToken } = await getDecryptedCredentials(Number(connectionId));
   if (!accessToken) throw new Error("No Google access token available.");
 
   const response = await fetch("https://mybusinessaccountmanagement.googleapis.com/v1/accounts", {
@@ -36,9 +36,9 @@ export async function listGbpAccounts(connectionId: string | number): Promise<Gb
   }
 
   const data = await response.json();
-  const accounts = data.accounts || [];
+  const accounts: Array<{ name: string; accountName?: string; type?: string }> = data.accounts || [];
 
-  return accounts.map((acc: any) => ({
+  return accounts.map((acc) => ({
     name: acc.name,
     accountName: acc.accountName || "Unknown Account",
     type: acc.type || "PERSONAL",
@@ -51,7 +51,7 @@ export async function listGbpLocations(
   connectionId: string | number,
   accountName: string
 ): Promise<GbpLocationInfo[]> {
-  const { accessToken } = await getDecryptedCredentials(connectionId as any);
+  const { accessToken } = await getDecryptedCredentials(Number(connectionId));
   if (!accessToken) throw new Error("No Google access token available.");
 
   // Encode the accountName parameter to fit in the path (e.g. accounts/123)
@@ -70,9 +70,16 @@ export async function listGbpLocations(
   }
 
   const data = await response.json();
-  const locations = data.locations || [];
+  const locations: Array<{
+    name: string;
+    title?: string;
+    primaryCategory?: { displayName?: string };
+    storefrontAddress?: { locality?: string; administrativeArea?: string; postalCode?: string; addressLines?: string[] };
+    phoneNumbers?: { primaryPhone?: string };
+    websiteUri?: string;
+  }> = data.locations || [];
 
-  return locations.map((loc: any) => {
+  return locations.map((loc) => {
     // Address formatter
     let address = "";
     if (loc.storefrontAddress) {
@@ -88,10 +95,10 @@ export async function listGbpLocations(
     return {
       name: loc.name,
       title: loc.title || "Unnamed Location",
-      primaryCategory: loc.primaryCategory?.displayName || null,
-      address: address || null,
-      phone: loc.phoneNumbers?.primaryPhone || null,
-      websiteUri: loc.websiteUri || null,
+      primaryCategory: loc.primaryCategory?.displayName || undefined,
+      address: address || undefined,
+      phone: loc.phoneNumbers?.primaryPhone || undefined,
+      websiteUri: loc.websiteUri || undefined,
     };
   });
 }
