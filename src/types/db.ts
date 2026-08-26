@@ -1,5 +1,5 @@
 export interface IntegrationConnectionRecord {
-  id: number;
+  id: string | number;
   propertyId: number | string;
   provider: "GA4" | "GSC" | "GBP" | string;
   externalId?: string | null;

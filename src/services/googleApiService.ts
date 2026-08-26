@@ -27,9 +27,9 @@ export const getGoogleTokens = async (code: string) => {
  * Detects legacy plaintext credentials, encrypts them, and saves them back to the database.
  * If the access token is expired, it refreshes it synchronously and stores the refreshed credentials.
  */
-export const getDecryptedCredentials = async (connectionId: number) => {
+export const getDecryptedCredentials = async (connectionId: string | number) => {
   const conn = await prisma.integrationConnection.findUnique({
-    where: { id: connectionId }
+    where: { id: connectionId.toString() }
   });
   if (!conn) throw new Error("Connection not found");
 
@@ -101,7 +101,7 @@ export const getDecryptedCredentials = async (connectionId: number) => {
 /**
  * Setup backup auto-refresh listener on clients.
  */
-const setupRefreshListener = (client: InstanceType<typeof google.auth.OAuth2>, connectionId: number) => {
+const setupRefreshListener = (client: InstanceType<typeof google.auth.OAuth2>, connectionId: string | number) => {
   client.on("tokens", async (tokens) => {
     try {
       const updateData: { accessToken?: string; refreshToken?: string; tokenExpiry?: Date; lastSyncTime?: Date } = {};
@@ -118,7 +118,7 @@ const setupRefreshListener = (client: InstanceType<typeof google.auth.OAuth2>, c
       if (Object.keys(updateData).length > 0) {
         updateData.lastSyncTime = new Date();
         await prisma.integrationConnection.update({
-          where: { id: connectionId },
+          where: { id: connectionId.toString() },
           data: updateData
         });
         console.log(`[AUTH] Event-driven writeback: saved refreshed credentials for connection ${connectionId}`);
@@ -129,7 +129,7 @@ const setupRefreshListener = (client: InstanceType<typeof google.auth.OAuth2>, c
   });
 };
 
-export const getGa4Client = (connectionId: number, accessToken: string, refreshToken?: string) => {
+export const getGa4Client = (connectionId: string | number, accessToken: string, refreshToken?: string) => {
   const client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -145,7 +145,7 @@ export const getGa4Client = (connectionId: number, accessToken: string, refreshT
   return google.analyticsdata({ version: "v1beta", auth: client });
 };
 
-export const getGa4AdminClient = (connectionId: number, accessToken: string, refreshToken?: string) => {
+export const getGa4AdminClient = (connectionId: string | number, accessToken: string, refreshToken?: string) => {
   const client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -155,13 +155,13 @@ export const getGa4AdminClient = (connectionId: number, accessToken: string, ref
     access_token: accessToken,
     refresh_token: refreshToken,
   });
-  
+
   setupRefreshListener(client, connectionId);
 
   return google.analyticsadmin({ version: "v1beta", auth: client });
 };
 
-export const getGscClient = (connectionId: number, accessToken: string, refreshToken?: string) => {
+export const getGscClient = (connectionId: string | number, accessToken: string, refreshToken?: string) => {
   const client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -177,7 +177,7 @@ export const getGscClient = (connectionId: number, accessToken: string, refreshT
   return google.webmasters({ version: "v3", auth: client });
 };
 
-export const listGa4Properties = async (connectionId: number) => {
+export const listGa4Properties = async (connectionId: string | number) => {
   const { accessToken, refreshToken } = await getDecryptedCredentials(connectionId);
   if (!accessToken) throw new Error("No access token available.");
   
@@ -207,7 +207,7 @@ export const listGa4Properties = async (connectionId: number) => {
   return propertiesList;
 };
 
-export const listGscSites = async (connectionId: number) => {
+export const listGscSites = async (connectionId: string | number) => {
   const { accessToken, refreshToken } = await getDecryptedCredentials(connectionId);
   if (!accessToken) throw new Error("No access token available.");
   

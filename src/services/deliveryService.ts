@@ -1,10 +1,10 @@
 import prisma from "@/lib/db";
 
 export interface DeliveryDetail {
-  id: number;
-  clientId: number;
+  id: string | number;
+  clientId: string | number;
   clientName: string;
-  propertyId: number | null;
+  propertyId: string | number | null;
   propertyDomain: string | null;
   type: string; // BACKLINK, CONTENT, MILESTONE
   date: string;
@@ -23,13 +23,13 @@ export interface DeliveryDetail {
 }
 
 export const getClientDeliveries = async (
-  clientId: number,
+  clientId: string | number,
   startDate: Date,
   endDate: Date
 ): Promise<DeliveryDetail[]> => {
   const events = await prisma.deliveryEvent.findMany({
     where: {
-      clientId,
+      clientId: clientId.toString(),
       date: {
         gte: startDate,
         lte: endDate,
@@ -57,7 +57,7 @@ export const getClientDeliveries = async (
   return events.map((e) => ({
     id: e.id,
     clientId: e.clientId,
-    clientName: e.client.name,
+    clientName: e.client?.name ?? "Unknown",
     propertyId: e.propertyId,
     propertyDomain: e.property ? e.property.domain : null,
     type: e.type,
@@ -120,7 +120,7 @@ export const getDeliveryOverview = async (
   return events.map((e) => ({
     id: e.id,
     clientId: e.clientId,
-    clientName: e.client.name,
+    clientName: e.client?.name ?? "Unknown",
     propertyId: e.propertyId,
     propertyDomain: e.property ? e.property.domain : null,
     type: e.type,

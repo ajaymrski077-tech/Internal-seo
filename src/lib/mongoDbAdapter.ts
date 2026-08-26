@@ -99,7 +99,7 @@ export interface ModelFindArgs {
 
 export function createModel<T = Record<string, unknown>>(
   collectionName: string,
-  relationResolver?: (doc: Record<string, unknown>, include: unknown) => Promise<Record<string, unknown>>
+  relationResolver?: (doc: T, include: Record<string, unknown>) => Promise<T>
 ) {
   const getCol = async () => {
     const db = await getDb();
@@ -135,7 +135,7 @@ export function createModel<T = Record<string, unknown>>(
       const formatted = docs.map(doc => formatDoc<T>(doc));
 
       if (relationResolver && args.include) {
-        return Promise.all(formatted.map(doc => relationResolver(doc as Record<string, unknown>, args.include) as Promise<T>));
+        return Promise.all(formatted.map(doc => relationResolver(doc, args.include as Record<string, unknown>)));
       }
       return formatted;
     },
@@ -147,7 +147,7 @@ export function createModel<T = Record<string, unknown>>(
       if (!doc) return null;
       const formatted = formatDoc<T>(doc);
       if (relationResolver && args.include) {
-        return relationResolver(formatted as Record<string, unknown>, args.include) as Promise<T>;
+        return relationResolver(formatted, args.include as Record<string, unknown>);
       }
       return formatted;
     },
@@ -177,7 +177,7 @@ export function createModel<T = Record<string, unknown>>(
       if (!doc) return null;
       const formatted = formatDoc<T>(doc);
       if (relationResolver && args.include) {
-        return relationResolver(formatted as Record<string, unknown>, args.include) as Promise<T>;
+        return relationResolver(formatted, args.include as Record<string, unknown>);
       }
       return formatted;
     },

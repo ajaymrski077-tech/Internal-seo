@@ -155,7 +155,7 @@ export const getDashboardData = async (
     deliveriesByClient[d.clientId].push({
       id: d.id,
       clientId: d.clientId,
-      clientName: d.client.name,
+      clientName: d.client?.name ?? "Unknown",
       propertyId: d.propertyId,
       propertyDomain: d.property?.domain || null,
       type: d.type,
@@ -278,7 +278,7 @@ export const getDashboardData = async (
         prevHistoryMap[prevDateStr] = { date: prevDateStr, sessions: 0, organicTraffic: 0, conversions: 0 };
       }
 
-      for (const prop of client.properties) {
+      for (const prop of (client.properties || [])) {
         const propCurrSnaps = currentSnapsByProperty[prop.id] || [];
         for (const s of propCurrSnaps) {
           currSessions += s.sessions;
@@ -708,7 +708,7 @@ export const getClientWorkspaceData = async (
       id: string | number;
       provider: string;
       status: string;
-      syncStatus?: string;
+      syncStatus?: string | null;
       syncError?: string | null;
       lastSyncTime?: string | Date | null;
       externalId?: string | null;
@@ -835,7 +835,7 @@ export const getClientWorkspaceData = async (
       primaryCategory: gbpLocation.primaryCategory,
       syncStatus: gbpLocation.syncStatus,
       lastSyncTime: gbpLocation.lastSyncTime?.toISOString() || null,
-      latestMetrics: gbpLocation.snapshots[0] ? {
+      latestMetrics: (gbpLocation.snapshots && gbpLocation.snapshots[0]) ? {
         viewsSearch: gbpLocation.snapshots[0].viewsSearch,
         viewsMaps: gbpLocation.snapshots[0].viewsMaps,
         clicksWebsite: gbpLocation.snapshots[0].clicksWebsite,
