@@ -45,8 +45,8 @@ export async function PUT(req: NextRequest) {
     }
 
     interface PropertyUpdate {
-      id: string | number;
-      clientId?: string | number | null;
+      id: string;
+      clientId?: string | null;
       brandType?: string | null;
       brandKeywords?: string | null;
     }
@@ -55,11 +55,11 @@ export async function PUT(req: NextRequest) {
     await Promise.all(
       (propertyUpdates as PropertyUpdate[]).map((update) =>
         prisma.websiteProperty.update({
-          where: { id: update.id },
+          where: { id: String(update.id) },
           data: {
-            clientId: update.clientId,
-            brandType: update.brandType,
-            brandKeywords: update.brandKeywords,
+            clientId: update.clientId ? String(update.clientId) : undefined,
+            brandType: update.brandType ?? undefined,
+            brandKeywords: update.brandKeywords ?? undefined,
           },
         })
       )

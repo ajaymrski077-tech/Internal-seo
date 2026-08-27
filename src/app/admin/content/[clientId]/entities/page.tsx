@@ -27,6 +27,7 @@ export default function ContentEntitiesPage() {
 
   const [allowlist, setAllowlist] = useState<EntityItem[]>([]);
   const [blocklist, setBlocklist] = useState<EntityItem[]>([]);
+  const [clientName, setClientName] = useState("Client");
   const [loading, setLoading] = useState(true);
 
   // Allowlist inputs
@@ -45,6 +46,12 @@ export default function ContentEntitiesPage() {
     if (!clientId) return;
     setLoading(true);
     try {
+      const clientRes = await fetch(`/api/clients/${clientId}`);
+      if (clientRes.ok) {
+        const cData = await clientRes.json();
+        setClientName(cData.name || "Client");
+      }
+
       const res = await fetch(`/api/content/client/${clientId}/entities`);
       if (!res.ok) {
         if (res.status === 401) {
@@ -146,14 +153,14 @@ export default function ContentEntitiesPage() {
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.8125rem", color: "#64748B", textDecoration: "none" }}
           >
             <ArrowLeft size={14} />
-            Back to Altitude Roofing
+            Back to {clientName}
           </Link>
         </div>
 
         {/* 2. HEADER */}
         <div style={{ marginBottom: "18px" }}>
           <h1 style={{ fontSize: "1.6rem", fontWeight: "800", color: "#0F172A", margin: "0 0 4px 0", letterSpacing: "-0.5px" }}>
-            Entities for Altitude Roofing
+            Entities for {clientName}
           </h1>
           <p style={{ fontSize: "0.8125rem", color: "#64748B", margin: 0 }}>
             Used by the brief and critique to enforce coverage and exclusion of specific named entities.
@@ -198,7 +205,7 @@ export default function ContentEntitiesPage() {
           <form onSubmit={handleAddAllowlist} style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="Entity (e.g. Arken Method)"
+              placeholder="Entity (e.g. Authority Method)"
               value={allowName}
               onChange={(e) => setAllowName(e.target.value)}
               style={{ flex: 2, minWidth: "160px", padding: "8px 12px", borderRadius: "6px", border: "1px solid #CBD5E1", fontSize: "0.8125rem", outline: "none" }}

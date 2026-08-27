@@ -5,12 +5,25 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Send, Paperclip } from "lucide-react";
 import { useToast } from "@/components/ToastContext";
+import PageLoader from "@/components/PageLoader";
+
+interface Ticket {
+  id: string;
+  subject: string;
+  status: string;
+  client?: { name: string };
+  senderEmail?: string;
+  createdAt: string;
+  body: string;
+}
 
 export default function TicketDetailPage() {
   const router = useRouter();
   const rawParams = useParams();
-  const id = (rawParams?.id as string) || "42";
+  const id = (rawParams?.id as string);
 
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState("Open");
   const [assignedTo, setAssignedTo] = useState("Unassigned");
   const [activeTab, setActiveTab] = useState<"client" | "internal">("client");
@@ -18,6 +31,28 @@ export default function TicketDetailPage() {
   const [isSending, setIsSending] = useState(false);
 
   const { toast, success, error: toastError } = useToast();
+
+  useEffect(() => {
+    if (id) {
+      fetchTicket();
+    }
+  }, [id]);
+
+  const fetchTicket = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/tickets/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTicket(data);
+        setStatus(data.status || "Open");
+      }
+    } catch (err) {
+      console.error("Failed to fetch ticket", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleUpdateStatus = () => {
     success(`Ticket status updated to ${status}`);
@@ -60,98 +95,95 @@ export default function TicketDetailPage() {
           </Link>
         </div>
 
-        {/* 2. TICKET MAIN CARD */}
-        <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "24px", marginBottom: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-          
-          <h1 style={{ fontSize: "1.4rem", fontWeight: "800", color: "#0F172A", margin: "0 0 8px 0" }}>
-            Batch page - remove mention of pricing
-          </h1>
-
-          <div style={{ fontSize: "0.775rem", color: "#64748B", display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "18px" }}>
-            <span><strong>Client:</strong> EIN Search</span>
-            <span><strong>From:</strong> Anila (anila.lahiri@libertydata.io)</span>
-            <span><strong>Created:</strong> 26 Aug 2026, 16:35</span>
+        {loading ? (
+          <PageLoader message="Loading Ticket" subtitle="Fetching ticket details" showSkeleton />
+        ) : !ticket ? (
+          <div style={{ padding: "40px", textAlign: "center", color: "#64748B", background: "white", borderRadius: "12px", border: "1px solid #E2E8F0" }}>
+            Ticket not found.
           </div>
+        ) : (
+          <>
+            <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "24px", marginBottom: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+              
+              <h1 style={{ fontSize: "1.4rem", fontWeight: "800", color: "#0F172A", margin: "0 0 8px 0" }}>
+                {ticket.subject || "No Subject"}
+              </h1>
 
-          {/* Status Bar Controls */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", borderTop: "1px solid #F1F5F9", paddingTop: "14px" }}>
-            <span style={{ fontSize: "0.725rem", fontWeight: "700", padding: "3px 8px", borderRadius: "4px", background: "#F1F5F9", color: "#475569" }}>
-              normal
-            </span>
+              <div style={{ fontSize: "0.775rem", color: "#64748B", display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "18px" }}>
+                <span><strong>Client:</strong> {ticket.client?.name || "Unknown"}</span>
+                <span><strong>From:</strong> {ticket.senderEmail || "Unknown"}</span>
+                <span><strong>Created:</strong> {new Date(ticket.createdAt).toLocaleString()}</span>
+              </div>
 
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              style={{ padding: "5px 10px", borderRadius: "4px", border: "1px solid #CBD5E1", fontSize: "0.775rem", color: "#334155" }}
-            >
-              <option>Open</option>
-              <option>In Progress</option>
-              <option>Pending</option>
-              <option>Closed</option>
-            </select>
+              {/* Status Bar Controls */}
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", borderTop: "1px solid #F1F5F9", paddingTop: "14px" }}>
+                <span style={{ fontSize: "0.725rem", fontWeight: "700", padding: "3px 8px", borderRadius: "4px", background: "#F1F5F9", color: "#475569" }}>
+                  normal
+                </span>
 
-            <button
-              onClick={handleUpdateStatus}
-              style={{ padding: "5px 12px", fontSize: "0.75rem", fontWeight: "600", color: "#334155", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "4px", cursor: "pointer" }}
-            >
-              Update
-            </button>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  style={{ padding: "5px 10px", borderRadius: "4px", border: "1px solid #CBD5E1", fontSize: "0.775rem", color: "#334155" }}
+                >
+                  <option>Open</option>
+                  <option>In Progress</option>
+                  <option>Pending</option>
+                  <option>Closed</option>
+                </select>
 
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              style={{ padding: "5px 10px", borderRadius: "4px", border: "1px solid #CBD5E1", fontSize: "0.775rem", color: "#334155", marginLeft: "10px" }}
-            >
-              <option>Unassigned</option>
-              <option>Arken - Dev Team</option>
-              <option>Content Lead</option>
-              <option>Account Manager</option>
-            </select>
+                <button
+                  onClick={handleUpdateStatus}
+                  style={{ padding: "5px 12px", fontSize: "0.75rem", fontWeight: "600", color: "#334155", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "4px", cursor: "pointer" }}
+                >
+                  Update
+                </button>
 
-            <button
-              onClick={handleAssign}
-              style={{ padding: "5px 12px", fontSize: "0.75rem", fontWeight: "600", color: "#334155", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "4px", cursor: "pointer" }}
-            >
-              Assign
-            </button>
+                <select
+                  value={assignedTo}
+                  onChange={(e) => setAssignedTo(e.target.value)}
+                  style={{ padding: "5px 10px", borderRadius: "4px", border: "1px solid #CBD5E1", fontSize: "0.775rem", color: "#334155", marginLeft: "10px" }}
+                >
+                  <option>Unassigned</option>
+                  <option>Mister SK - Dev Team</option>
+                  <option>Content Lead</option>
+                  <option>Account Manager</option>
+                </select>
 
-            <button
-              onClick={handleDelete}
-              style={{ marginLeft: "auto", padding: "5px 12px", fontSize: "0.75rem", fontWeight: "600", color: "#DC2626", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "4px", cursor: "pointer" }}
-            >
-              Delete
-            </button>
-          </div>
+                <button
+                  onClick={handleAssign}
+                  style={{ padding: "5px 12px", fontSize: "0.75rem", fontWeight: "600", color: "#334155", background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "4px", cursor: "pointer" }}
+                >
+                  Assign
+                </button>
 
-        </div>
+                <button
+                  onClick={handleDelete}
+                  style={{ marginLeft: "auto", padding: "5px 12px", fontSize: "0.75rem", fontWeight: "600", color: "#DC2626", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "4px", cursor: "pointer" }}
+                >
+                  Delete
+                </button>
+              </div>
 
-        {/* 3. THREAD MESSAGES */}
-        <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px", overflow: "hidden", marginBottom: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
-          
-          <div style={{ padding: "14px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <strong style={{ fontSize: "0.875rem", color: "#0F172A" }}>Anila (client)</strong>
-            <span style={{ fontSize: "0.75rem", color: "#64748B" }}>26 Aug, 16:35</span>
-          </div>
-
-          <div style={{ padding: "20px" }}>
-            <p style={{ fontSize: "0.8125rem", color: "#334155", lineHeight: "1.6", margin: "0 0 16px 0" }}>
-              Hi team, please remove the turnaround time affecting the price wording on the Batch page as shown in the screenshot attached. It is not accurate for our bespoke batch orders.
-            </p>
-
-            <div style={{ background: "#0F172A", color: "#FFFFFF", padding: "24px", borderRadius: "8px", position: "relative", marginBottom: "16px" }}>
-              <div style={{ fontSize: "0.6875rem", color: "#94A3B8", marginBottom: "4px", textTransform: "uppercase" }}>GET A CUSTOM QUOTE</div>
-              <h3 style={{ fontSize: "1.2rem", fontWeight: "800", margin: "0 0 10px 0" }}>Pricing tailored to your file: let us take a look</h3>
-              <p style={{ fontSize: "0.8125rem", color: "#CBD5E1", lineHeight: "1.5", margin: 0 }}>
-                Every batch is different. The number of records, the data you need appended, and <span style={{ border: "2px solid #EF4444", padding: "2px 6px", borderRadius: "4px", color: "#FCA5A5" }}>the turnaround time all affect the price</span>. Share the details of your file with us.
-              </p>
             </div>
 
-            <div style={{ fontSize: "0.775rem", color: "#64748B", fontStyle: "italic" }}>
-              &quot;Not sure why I cannot find and edit this myself in the WP content but need this removed as it&apos;s not accurate.&quot;
-            </div>
-          </div>
+            {/* 3. THREAD MESSAGES */}
+            <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px", overflow: "hidden", marginBottom: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+              
+              <div style={{ padding: "14px 20px", background: "#F8FAFC", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <strong style={{ fontSize: "0.875rem", color: "#0F172A" }}>{ticket.client?.name || "Client"}</strong>
+                <span style={{ fontSize: "0.75rem", color: "#64748B" }}>{new Date(ticket.createdAt).toLocaleString()}</span>
+              </div>
 
-        </div>
+              <div style={{ padding: "20px" }}>
+                <p style={{ fontSize: "0.8125rem", color: "#334155", lineHeight: "1.6", margin: "0 0 16px 0" }}>
+                  {ticket.body || "No message provided."}
+                </p>
+              </div>
+
+            </div>
+          </>
+        )}
 
         {/* 4. REPLY FORM */}
         <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "20px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>

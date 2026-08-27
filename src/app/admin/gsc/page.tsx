@@ -9,19 +9,21 @@ import { useToast } from "@/components/ToastContext";
 import { ResponsiveContainer, LineChart, Line, Tooltip, XAxis } from "recharts";
 
 interface GscOverviewItem {
-  id: number;
+  id: string | number;
   domain: string;
-  clientId: number;
+  clientId: string | number;
   clientName: string;
   clicks: number;
   impressions: number;
   avgPosition: string;
+  isConnected?: boolean;
   chartData: { date: string; clicks: number; impressions: number }[];
 }
 
 export default function GscOverviewPage() {
   const { error: toastError } = useToast();
-  const [data, setData] = useState<GscOverviewItem[]>([]);
+  const [clientSites, setClientSites] = useState<GscOverviewItem[]>([]);
+  const [internalSites, setInternalSites] = useState<GscOverviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -31,9 +33,9 @@ export default function GscOverviewPage() {
         const res = await fetch("/api/gsc/overview");
         if (!res.ok) throw new Error("Failed to load GSC overview");
         const json = await res.json();
-        setData(json.data || []);
+        setClientSites(json.clientSites || json.data || []);
+        setInternalSites(json.internalSites || []);
       } catch (err: unknown) {
-      const errObj = err as Error;
         handleApiError(err, { 
           toast: { error: toastError },
           fallbackMessage: "Failed to load GSC overview"
@@ -45,9 +47,93 @@ export default function GscOverviewPage() {
     loadData();
   }, [toastError]);
 
-  const filteredData = data.filter(item => 
+  const filteredClientSites = clientSites.filter(item => 
     item.domain.toLowerCase().includes(search.toLowerCase()) || 
     item.clientName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredInternalSites = internalSites.filter(item => 
+    item.domain.toLowerCase().includes(search.toLowerCase()) || 
+    item.clientName.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const renderCard = (item: GscOverviewItem) => (
+    <div key={item.id} style={{ background: "white", borderRadius: "10px", border: "1px solid #E2E8F0", padding: "20px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <h3 style={{ fontSize: "14px", fontWeight: "700", margin: "0 0 2px 0", color: "#0F172A" }}>{item.clientName}</h3>
+          <a href={`https://${item.domain}`} target="_blank" rel="noreferrer" style={{ fontSize: "12px", color: "#64748B", textDecoration: "none" }}>https://{item.domain}/</a>
+        </div>
+        <span style={{ 
+          background: item.isConnected !== false ? "#DCFCE7" : "#F1F5F9", 
+          color: item.isConnected !== false ? "#15803D" : "#64748B", 
+          padding: "2px 8px", 
+          borderRadius: "12px", 
+          fontSize: "11px", 
+          fontWeight: "700" 
+        }}>
+          {item.isConnected !== false ? "Active" : "Offline"}
+        </span>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "4px" }}>
+        <div>
+          <div style={{ fontSize: "20px", fontWeight: "800", color: "#3B82F6" }}>{item.clicks.toLocaleString()}</div>
+          <div style={{ fontSize: "11px", color: "#64748B" }}>Clicks</div>
+        </div>
+        <div>
+          <div style={{ fontSize: "20px", fontWeight: "800", color: "#8B5CF6" }}>{item.impressions.toLocaleString()}</div>
+          <div style={{ fontSize: "11px", color: "#64748B" }}>Impressions</div>
+        </div>
+        <div>
+          <div style={{ fontSize: "20px", fontWeight: "800", color: "#0F172A" }}>{item.avgPosition}</div>
+          <div style={{ fontSize: "11px", color: "#64748B" }}>Avg Pos</div>
+        </div>
+      </div>
+
+      <div style={{ height: "60px", width: "100%", marginTop: "4px" }}>
+        {item.chartData && item.chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={item.chartData}>
+              <XAxis dataKey="date" hide />
+              <Tooltip
+                contentStyle={{
+                  background: "#1F2937",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "11px",
+                  padding: "8px 12px"
+                }}
+                itemStyle={{ color: "white" }}
+              />
+              <Line type="monotone" dataKey="clicks" name="Clicks" stroke="#3B82F6" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="impressions" name="Impressions" stroke="#8B5CF6" strokeWidth={2} dot={false} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontSize: "12px", background: "#F8FAFC", borderRadius: "4px" }}>
+            No sync data yet
+          </div>
+        )}
+      </div>
+
+      <div style={{ marginTop: "auto", paddingTop: "10px", borderTop: "1px solid #F1F5F9" }}>
+        <Link 
+          href={`/admin/gsc/${item.id}`} 
+          style={{ 
+            fontSize: "12px", 
+            color: "#64748B",
+            textDecoration: "none", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "4px"
+          }}
+        >
+          View analysis &rarr;
+        </Link>
+      </div>
+    </div>
   );
 
   return (
@@ -70,9 +156,9 @@ export default function GscOverviewPage() {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: "16px", marginBottom: "16px", color: "var(--text-muted)", fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-        <span style={{ color: "var(--text-primary)" }}>CLIENT SITES</span>
-        <span>{filteredData.length} CLIENTS</span>
+      <div style={{ display: "flex", gap: "16px", marginBottom: "16px", color: "var(--text-muted)", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <span style={{ color: "#0F172A" }}>CLIENT SITES</span>
+        <span style={{ color: "#64748B" }}>{filteredClientSites.length} CLIENTS</span>
       </div>
 
       {loading ? (
@@ -80,88 +166,24 @@ export default function GscOverviewPage() {
           <Loader2 className={styles.emptyIcon} style={{ animation: "spin 1s linear infinite" }} />
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "24px" }}>
-          {filteredData.map(item => (
-            <div key={item.id} style={{ background: "white", borderRadius: "8px", border: "1px solid var(--border-color)", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <h3 style={{ fontSize: "14px", fontWeight: "600", margin: "0 0 4px 0", color: "var(--text-primary)" }}>{item.clientName}</h3>
-                  <a href={`https://${item.domain}`} target="_blank" rel="noreferrer" style={{ fontSize: "12px", color: "var(--brand-primary)", textDecoration: "none" }}>https://{item.domain}/</a>
-                </div>
-                <span style={{ background: "var(--success-light)", color: "var(--success-dark)", padding: "2px 8px", borderRadius: "12px", fontSize: "11px", fontWeight: "600" }}>Active</span>
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "24px", marginBottom: "40px" }}>
+            {filteredClientSites.map(renderCard)}
+          </div>
+
+          {filteredInternalSites.length > 0 && (
+            <>
+              <div style={{ display: "flex", gap: "16px", marginBottom: "16px", color: "var(--text-muted)", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <span style={{ color: "#0F172A" }}>INTERNAL SITES</span>
+                <span style={{ color: "#64748B" }}>{filteredInternalSites.length} SITES</span>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "8px" }}>
-                <div>
-                  <div style={{ fontSize: "20px", fontWeight: "700", color: "#3B82F6" }}>{item.clicks.toLocaleString()}</div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Clicks</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "20px", fontWeight: "700", color: "#8B5CF6" }}>{item.impressions.toLocaleString()}</div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Impressions</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-primary)" }}>{item.avgPosition}</div>
-                  <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>Avg Pos</div>
-                </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: "24px" }}>
+                {filteredInternalSites.map(renderCard)}
               </div>
-
-              <div style={{ height: "60px", width: "100%", marginTop: "8px" }}>
-                {item.chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={item.chartData}>
-                      <XAxis dataKey="date" hide />
-                      <Tooltip
-                        contentStyle={{
-                          background: "#1F2937",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          fontSize: "11px",
-                          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                          padding: "8px 12px"
-                        }}
-                        itemStyle={{ color: "white" }}
-                        labelFormatter={(value) => {
-                          if (typeof value === "string" || typeof value === "number") {
-                            return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-                          }
-                          return "";
-                        }}
-                      />
-                      <Line type="monotone" dataKey="clicks" name="Clicks" stroke="#3B82F6" strokeWidth={2} dot={false} isAnimationActive={false} />
-                      <Line type="monotone" dataKey="impressions" name="Impressions" stroke="#8B5CF6" strokeWidth={2} dot={false} isAnimationActive={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "12px", background: "var(--bg-secondary)", borderRadius: "4px" }}>
-                    No sync data yet
-                  </div>
-                )}
-              </div>
-
-              <div style={{ marginTop: "auto", paddingTop: "12px", borderTop: "1px solid var(--border-color)" }}>
-                <Link 
-                  href={`/admin/gsc/${item.id}`} 
-                  className={styles.btnSecondary} 
-                  style={{ 
-                    fontSize: "12px", 
-                    textDecoration: "none", 
-                    display: "flex", 
-                    alignItems: "center", 
-                    justifyContent: "center", 
-                    gap: "4px",
-                    width: "100%",
-                    boxSizing: "border-box"
-                  }}
-                >
-                  View analysis &rarr;
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );

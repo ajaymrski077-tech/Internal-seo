@@ -2,31 +2,28 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Globe, RefreshCw, AlertTriangle, ShieldCheck, MapPin, Phone, ExternalLink, Calendar, Plus, Navigation } from "lucide-react";
-import styles from "@/styles/SharedModule.module.css";
+import { MapPin, Star, MessageSquare, Image as ImageIcon, Eye, ExternalLink, RefreshCw } from "lucide-react";
+import PageLoader from "@/components/PageLoader";
 
-interface Location {
-  id: number;
-  locationName: string;
+interface GbpLocationItem {
+  id: string | number;
   displayName: string;
-  address: string | null;
-  phone: string | null;
-  websiteUri: string | null;
-  primaryCategory: string | null;
-  syncStatus: string;
-  syncError: string | null;
-  lastSyncTime: string | null;
-  clientId: number;
   clientName: string;
-  domain: string;
+  address?: string | null;
+  phone?: string | null;
+  websiteUri?: string | null;
+  syncStatus: string;
+  rating?: number;
+  reviewsCount?: number;
+  verified?: boolean;
 }
 
-export default function GbpDashboard() {
-  const [locations, setLocations] = useState<Location[]>([]);
+export default function GbpManagerPage() {
+  const [locations, setLocations] = useState<GbpLocationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncingId, setSyncingId] = useState<number | null>(null);
 
   const fetchLocations = async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/gbp/locations");
       if (res.ok) {
@@ -34,7 +31,7 @@ export default function GbpDashboard() {
         setLocations(data.locations || []);
       }
     } catch (err) {
-      console.error("Failed to load GMB locations:", err);
+      console.error("Failed to load GBP locations:", err);
     } finally {
       setLoading(false);
     }
@@ -44,160 +41,129 @@ export default function GbpDashboard() {
     fetchLocations();
   }, []);
 
-  const handleSyncLocation = async (e: React.MouseEvent, locationId: number) => {
-    e.stopPropagation(); // Prevent card navigation
-    setSyncingId(locationId);
-    try {
-      const res = await fetch(`/api/gbp/locations/${locationId}/sync`, {
-        method: "POST"
-      });
-      if (res.ok) {
-        fetchLocations();
-      }
-    } catch (err) {
-      console.error("Failed to sync GMB location:", err);
-    } finally {
-      setSyncingId(null);
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    let bg = "#F1F5F9";
-    let color = "#64748B";
-    if (status === "CONNECTED") { bg = "#ECFDF5"; color = "#059669"; }
-    else if (status === "SYNCING") { bg = "#EFF6FF"; color = "#2563EB"; }
-    else if (status === "ERROR") { bg = "#FEF2F2"; color = "#DC2626"; }
-
-    return (
-      <span style={{
-        background: bg,
-        color,
-        padding: "4px 10px",
-        borderRadius: "12px",
-        fontSize: "11px",
-        fontWeight: "600",
-        textTransform: "capitalize",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px"
-      }}>
-        {status === "SYNCING" && <RefreshCw size={10} className="spin" style={{ animation: "spin 1s linear infinite" }} />}
-        {status.toLowerCase()}
-      </span>
-    );
-  };
-
   return (
-    <div style={{ padding: "32px", maxWidth: "1500px", margin: "0 auto", background: "#F8FAFC", minHeight: "100vh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <div>
-          <h1 style={{ fontSize: "24px", fontWeight: "600", margin: 0, color: "#0F172A" }}>Google Business Profile</h1>
-          <p style={{ margin: "4px 0 0 0", color: "#64748B", fontSize: "14px" }}>Monitor Google Maps search volume, local listing traffic, and storefront directory performance.</p>
-        </div>
-      </div>
+    <div style={{ background: "#F8FAFC", minHeight: "100vh", padding: "32px" }}>
+      <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
+        
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
+          <div>
+            <h1 style={{ fontSize: "28px", fontWeight: "800", color: "#0F172A", margin: "0 0 6px 0", letterSpacing: "-0.5px" }}>
+              Google Business Profile Manager
+            </h1>
+            <p style={{ color: "#64748B", fontSize: "13px", margin: 0 }}>
+              Live GBP performance, review streams, local map pack rankings, and profile audit status
+            </p>
+          </div>
 
-      {loading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "80px", background: "white", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
-          <div className="spinner" />
-        </div>
-      ) : locations.length === 0 ? (
-        <div style={{ background: "white", padding: "60px", textAlign: "center", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
-          <MapPin style={{ fontSize: "48px", color: "#94A3B8", marginBottom: "16px", margin: "0 auto" }} size={48} />
-          <h2 style={{ fontSize: "18px", fontWeight: "600", margin: 0 }}>No Locations Connected Yet</h2>
-          <p style={{ color: "#64748B", margin: "8px 0 16px 0", fontSize: "13px" }}>Business Profile locations must be connected and mapped through the Client Workspace.</p>
-          <Link
-            href="/admin/clients"
-            className={styles.btnPrimary}
-            style={{ display: "inline-block", textDecoration: "none" }}
+          <button
+            onClick={fetchLocations}
+            style={{
+              background: "#0F4C5C",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              padding: "7px 16px",
+              fontSize: "12.5px",
+              fontWeight: "600",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
           >
-            Go to Clients Workspace
-          </Link>
+            <RefreshCw size={13} /> Sync All Profiles
+          </button>
         </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: "20px" }}>
-          {locations.map((loc) => (
-            <div
-              key={loc.id}
-              onClick={() => window.location.href = `/admin/gbp/locations/${loc.id}`}
+
+        {/* Location Cards */}
+        {loading ? (
+          <PageLoader message="Loading Business Profiles" subtitle="Syncing Google Business data" />
+        ) : locations.length === 0 ? (
+          <div style={{ background: "white", borderRadius: "10px", border: "1px solid #E2E8F0", padding: "48px", textAlign: "center", color: "#64748B" }}>
+            <p style={{ margin: "0 0 10px 0", fontSize: "16px", fontWeight: "700", color: "#0F172A" }}>No Connected Business Profiles</p>
+            <p style={{ margin: "0 0 20px 0", fontSize: "13px", color: "#64748B" }}>
+              Connect your Google Business Profile in client workspaces to monitor reviews, queries, and calls.
+            </p>
+            <Link
+              href="/admin/clients"
               style={{
-                background: "white",
-                border: "1px solid #E2E8F0",
-                borderRadius: "8px",
-                padding: "24px",
-                cursor: "pointer",
-                transition: "transform 0.15s, box-shadow 0.15s",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.05)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "none";
-                e.currentTarget.style.boxShadow = "none";
+                background: "#0F172A",
+                color: "white",
+                padding: "8px 18px",
+                borderRadius: "6px",
+                fontSize: "13px",
+                fontWeight: "600",
+                textDecoration: "none"
               }}
             >
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#64748B", fontWeight: "600", textTransform: "uppercase" }}>{loc.clientName}</span>
-                    <h3 style={{ fontSize: "16px", fontWeight: "600", margin: "2px 0 0 0", color: "#0F172A" }}>{loc.displayName}</h3>
+              Go to Client Workspaces
+            </Link>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "20px" }}>
+            {locations.map((loc) => (
+              <div
+                key={loc.id}
+                style={{
+                  background: "white",
+                  borderRadius: "10px",
+                  border: "1px solid #E2E8F0",
+                  padding: "20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between"
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                    <div>
+                      <span style={{ fontSize: "11px", fontWeight: "700", textTransform: "uppercase", color: "#64748B", letterSpacing: "0.4px" }}>
+                        {loc.clientName}
+                      </span>
+                      <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0F172A", margin: "2px 0 0 0" }}>
+                        {loc.displayName}
+                      </h3>
+                    </div>
+
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "11.5px",
+                      fontWeight: "700",
+                      padding: "2px 8px",
+                      borderRadius: "4px",
+                      background: loc.syncStatus === "SUCCESS" ? "#ECFDF5" : "#FEF3C7",
+                      color: loc.syncStatus === "SUCCESS" ? "#059669" : "#D97706"
+                    }}>
+                      {loc.syncStatus === "SUCCESS" ? "Connected" : "Pending"}
+                    </span>
                   </div>
-                  {getStatusBadge(loc.syncStatus)}
+
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "6px", color: "#64748B", fontSize: "12px", marginBottom: "16px" }}>
+                    <MapPin size={14} style={{ marginTop: "2px", flexShrink: 0 }} />
+                    <span>{loc.address || "Address configured in Google"}</span>
+                  </div>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", color: "#475569", margin: "16px 0" }}>
-                  {loc.primaryCategory && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Globe size={14} style={{ color: "#94A3B8" }} />
-                      <span>{loc.primaryCategory}</span>
-                    </div>
-                  )}
-                  {loc.address && (
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "6px" }}>
-                      <MapPin size={14} style={{ color: "#94A3B8", marginTop: "2px" }} />
-                      <span style={{ lineBreak: "anywhere" }}>{loc.address}</span>
-                    </div>
-                  )}
-                  {loc.phone && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Phone size={14} style={{ color: "#94A3B8" }} />
-                      <span>{loc.phone}</span>
-                    </div>
-                  )}
+                <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "12px", color: "#64748B" }}>
+                    {loc.phone || loc.websiteUri || "Verified Profile"}
+                  </span>
+                  <Link
+                    href={`/admin/gbp/locations/${loc.id}`}
+                    style={{ fontSize: "12px", color: "#0F4C5C", fontWeight: "700", textDecoration: "none" }}
+                  >
+                    View Details →
+                  </Link>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              <div style={{ borderTop: "1px solid #F1F5F9", paddingTop: "14px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" }}>
-                <span style={{ color: "#64748B" }}>
-                  Synced: {loc.lastSyncTime ? new Date(loc.lastSyncTime).toLocaleDateString() : "Never"}
-                </span>
-                <button
-                  onClick={(e) => handleSyncLocation(e, loc.id)}
-                  disabled={syncingId === loc.id || loc.syncStatus === "SYNCING"}
-                  style={{
-                    padding: "6px 12px",
-                    background: "#F8FAFC",
-                    border: "1px solid #E2E8F0",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    fontWeight: "500",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    color: "#475569"
-                  }}
-                >
-                  <RefreshCw size={12} className={syncingId === loc.id ? "spin" : ""} />
-                  Sync
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      </div>
     </div>
   );
 }

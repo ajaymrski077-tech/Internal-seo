@@ -30,6 +30,7 @@ export default function PageTemplatesPage() {
   const clientId = (rawParams?.clientId as string) || "";
 
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [clientName, setClientName] = useState("Client");
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
@@ -44,6 +45,12 @@ export default function PageTemplatesPage() {
     if (!clientId) return;
     setLoading(true);
     try {
+      const clientRes = await fetch(`/api/clients/${clientId}`);
+      if (clientRes.ok) {
+        const cData = await clientRes.json();
+        setClientName(cData.name || "Client");
+      }
+
       const res = await fetch(`/api/content/client/${clientId}/templates`);
       if (!res.ok) {
         if (res.status === 401) {
@@ -116,7 +123,7 @@ export default function PageTemplatesPage() {
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.8125rem", color: "#64748B", textDecoration: "none" }}
           >
             <ArrowLeft size={14} />
-            Back to Altitude Roofing hub
+            Back to {clientName} hub
           </Link>
         </div>
 
@@ -124,7 +131,7 @@ export default function PageTemplatesPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", flexWrap: "wrap", gap: "16px" }}>
           <div>
             <h1 style={{ fontSize: "1.6rem", fontWeight: "800", color: "#0F172A", margin: "0 0 6px 0", letterSpacing: "-0.5px" }}>
-              Page templates: Altitude Roofing
+              Page templates: {clientName}
             </h1>
             <p style={{ fontSize: "0.8125rem", color: "#64748B", maxWidth: "800px", lineHeight: "1.4", margin: 0 }}>
               Templates capture the structural pattern of an existing service page (sections, order, word distribution) and let you reuse it across multiple service-page ideas. Useful when you have a layout that works — upload a screenshot or paste a URL once, then pick it from the dropdown when creating a new service-page idea.

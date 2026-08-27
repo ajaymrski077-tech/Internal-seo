@@ -608,3 +608,27 @@ model ContentSettings {
   updatedAt        DateTime  @updatedAt
 }
 
+
+model PrVertical {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  slug      String   @unique
+  sortOrder Int      @default(500)
+  covers    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model PrNationalDate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  nextDate  String
+  rule      String?
+  verticals String?
+  peg       String?
+  type      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

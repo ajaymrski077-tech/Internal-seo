@@ -34,6 +34,8 @@ import {
   PageTemplate,
   ContentEntity,
   ContentSettings,
+  PrVertical,
+  PrNationalDate,
 } from "@prisma/client";
 
 // Define composite types with relations
@@ -214,6 +216,8 @@ export const pageTemplateCol = createModel<PageTemplate>("pageTemplates");
 export const contentEntityCol = createModel<ContentEntity>("contentEntities");
 export const contentSettingsCol = createModel<ContentSettings>("contentSettings");
 export const reportCol = createModel<ReportWithRelations>("reports", attachReportRelations);
+export const prVerticalCol = createModel<PrVertical>("PrVertical");
+export const prNationalDateCol = createModel<PrNationalDate>("PrNationalDate");
 
 type IncludeConfig = Record<string, unknown>;
 
@@ -530,6 +534,8 @@ const basePrisma = {
   pageTemplate: pageTemplateCol,
   contentEntity: contentEntityCol,
   contentSettings: contentSettingsCol,
+  prVertical: prVerticalCol,
+  prNationalDate: prNationalDateCol,
 };
 
 export type DatabaseClient = typeof basePrisma & {

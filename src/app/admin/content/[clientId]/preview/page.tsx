@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, RefreshCw, CheckCircle2 } from "lucide-react";
-import styles from "@/styles/Reports.module.css";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import PageLoader from "@/components/PageLoader";
 
 interface PieceReview {
   id: string;
@@ -19,39 +19,45 @@ export default function CustomerContentPreviewPage() {
   const rawParams = useParams();
   const clientId = (rawParams?.clientId as string) || "";
 
-  const [clientName, setClientName] = useState("Altitude Roofing");
-  const [loading, setLoading] = useState(false);
+  const [clientName, setClientName] = useState("Client");
+  const [pieces, setPieces] = useState<PieceReview[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const approvedPieces: PieceReview[] = [
-    {
-      id: "1",
-      title: "How Long Does a Roof Replacement Take? - Altitude Roofing",
-      words: 1923,
-      approvedDate: "2026-08-19",
-      isLive: true,
-    },
-    {
-      id: "2",
-      title: "Slate vs Tile Roof: Which is Right for Your Home? - Altitude Roofing",
-      words: 1676,
-      approvedDate: "2026-08-19",
-      isLive: true,
-    },
-    {
-      id: "3",
-      title: "Moss on Roof Tiles: Removal & Prevention - Altitude Roofing",
-      words: 1274,
-      approvedDate: "2026-07-15",
-      isLive: true,
-    },
-    {
-      id: "4",
-      title: "Roof Leaks in Heavy Rain: Causes & Fixes - Altitude Roofing",
-      words: 1106,
-      approvedDate: "2026-07-15",
-      isLive: true,
-    },
-  ];
+  const fetchClientContent = useCallback(async () => {
+    if (!clientId) return;
+    setLoading(true);
+    try {
+      const clientRes = await fetch(`/api/clients/${clientId}`);
+      if (clientRes.ok) {
+        const clientData = await clientRes.json();
+        setClientName(clientData.name || "Client");
+        
+        const propertyId = clientData.properties?.[0]?.id;
+        if (propertyId) {
+          const itemsRes = await fetch(`/api/content/items?propertyId=${propertyId}`);
+          if (itemsRes.ok) {
+            const itemsData = await itemsRes.json();
+            const formatted = (itemsData.items || []).map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              words: item.draft?.wordCount || 1200,
+              approvedDate: new Date(item.updatedAt || item.createdAt).toISOString().split("T")[0],
+              isLive: item.status === "PUBLISHED" || item.status === "APPROVED"
+            }));
+            setPieces(formatted);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Preview fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    fetchClientContent();
+  }, [fetchClientContent]);
 
   return (
     <div style={{ background: "#FAFAF9", minHeight: "100vh" }}>
@@ -71,8 +77,8 @@ export default function CustomerContentPreviewPage() {
       {/* 2. CLIENT SUBHEADER */}
       <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "20px 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "32px" }}>
-          <div style={{ width: "24px", height: "24px", background: "#0F172A", borderRadius: "4px" }}></div>
-          <span style={{ fontWeight: "800", fontSize: "1.1rem", color: "#0F172A" }}>Arken</span>
+          <img src="/logo.png" alt="Mister SK Infotech" style={{ height: "24px", width: "auto" }} />
+          <span style={{ fontWeight: "800", fontSize: "1.1rem", color: "#0F172A" }}>Mister SK</span>
           <span style={{ fontSize: "0.75rem", color: "#94A3B8", textTransform: "uppercase", fontWeight: "700", marginLeft: "6px" }}>YOUR CONTENT</span>
         </div>
 
@@ -83,89 +89,64 @@ export default function CustomerContentPreviewPage() {
               Your content
             </h1>
             <p style={{ fontSize: "0.875rem", color: "#64748B", margin: 0 }}>
-              Everything we&apos;ve sent {clientName} for review. Open any piece to read it, comment on it, or approve it.
+              All approved articles written for your website. Click any title to read the full draft.
             </p>
           </div>
-
-          <div style={{ fontSize: "0.75rem", color: "#94A3B8" }}>
-            Can sign in:<br />
-            <strong style={{ color: "#475569" }}>info@heightspecialist.co.uk</strong>
-          </div>
         </div>
 
-        {/* 4. 3-COLUMN KANBAN (To review | Changes underway | Approved) */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "20px", alignItems: "start" }}>
-          
-          {/* Column 1: To review */}
-          <div style={{ background: "#F1F5F9", borderRadius: "10px", padding: "16px", minHeight: "360px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0F172A" }}>To review</span>
-              <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748B", background: "#E2E8F0", padding: "2px 7px", borderRadius: "9999px" }}>0</span>
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "#64748B", marginBottom: "16px" }}>
-              Sent to you and waiting on your read.
-            </div>
-            <div style={{ fontSize: "0.8125rem", color: "#94A3B8", textAlign: "center", marginTop: "40px" }}>
-              Nothing in this column.
-            </div>
+        {/* 4. PIECES LIST */}
+        {loading ? (
+          <PageLoader message="Loading Content" subtitle="Fetching approved articles" />
+        ) : pieces.length === 0 ? (
+          <div style={{ background: "#FFFFFF", borderRadius: "10px", border: "1px solid #E2E8F0", padding: "40px", textAlign: "center", color: "#64748B" }}>
+            No approved content pieces available for {clientName} yet.
           </div>
-
-          {/* Column 2: Changes underway */}
-          <div style={{ background: "#F1F5F9", borderRadius: "10px", padding: "16px", minHeight: "360px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0F172A" }}>Changes underway</span>
-              <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#64748B", background: "#E2E8F0", padding: "2px 7px", borderRadius: "9999px" }}>0</span>
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "#64748B", marginBottom: "16px" }}>
-              You asked for edits. It&apos;s back with us.
-            </div>
-            <div style={{ fontSize: "0.8125rem", color: "#94A3B8", textAlign: "center", marginTop: "40px" }}>
-              Nothing in this column.
-            </div>
-          </div>
-
-          {/* Column 3: Approved */}
-          <div style={{ background: "#F1F5F9", borderRadius: "10px", padding: "16px", minHeight: "360px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-              <span style={{ fontSize: "0.875rem", fontWeight: "700", color: "#0F172A" }}>Approved</span>
-              <span style={{ fontSize: "0.75rem", fontWeight: "700", color: "#15803D", background: "#DCFCE7", padding: "2px 7px", borderRadius: "9999px" }}>{approvedPieces.length}</span>
-            </div>
-            <div style={{ fontSize: "0.75rem", color: "#64748B", marginBottom: "16px" }}>
-              Signed off by you.
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {approvedPieces.map((p) => (
-                <div
-                  key={p.id}
-                  style={{
-                    background: "#FFFFFF",
-                    border: "1px solid #E2E8F0",
-                    borderRadius: "8px",
-                    padding: "14px",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "6px"
-                  }}
-                >
-                  <strong style={{ fontSize: "0.875rem", color: "#0F172A", lineHeight: "1.3" }}>
-                    {p.title}
-                  </strong>
-                  <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
-                    {p.words.toLocaleString()} words · Approved {p.approvedDate}
-                  </div>
-                  <div>
-                    <span style={{ fontSize: "0.6875rem", fontWeight: "700", background: "#DCFCE7", color: "#15803D", padding: "2px 6px", borderRadius: "4px" }}>
-                      LIVE
-                    </span>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {pieces.map((piece) => (
+              <div
+                key={piece.id}
+                style={{
+                  background: "#FFFFFF",
+                  borderRadius: "10px",
+                  border: "1px solid #E2E8F0",
+                  padding: "18px 24px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: "1rem", fontWeight: "700", color: "#0F172A", margin: "0 0 6px 0" }}>
+                    {piece.title}
+                  </h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: "0.75rem", color: "#64748B" }}>
+                    <span>{piece.words.toLocaleString()} words</span>
+                    <span>Approved {piece.approvedDate}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
 
-        </div>
+                <div>
+                  {piece.isLive && (
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      background: "#ECFDF5",
+                      color: "#059669",
+                      padding: "4px 10px",
+                      borderRadius: "6px",
+                      fontSize: "0.75rem",
+                      fontWeight: "700"
+                    }}>
+                      <CheckCircle2 size={12} /> Live
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

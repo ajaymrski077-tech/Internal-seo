@@ -26,6 +26,7 @@ export default function ContentSettingsPage() {
   const clientId = (rawParams?.clientId as string) || "";
 
   const [settings, setSettings] = useState<ContentSettingsPayload | null>(null);
+  const [clientName, setClientName] = useState("Client");
   const [sitemapUrl, setSitemapUrl] = useState("");
   const [serpLocation, setSerpLocation] = useState("2826");
   const [isV2Enabled, setIsV2Enabled] = useState(true);
@@ -38,6 +39,12 @@ export default function ContentSettingsPage() {
     if (!clientId) return;
     setLoading(true);
     try {
+      const clientRes = await fetch(`/api/clients/${clientId}`);
+      if (clientRes.ok) {
+        const cData = await clientRes.json();
+        setClientName(cData.name || "Client");
+      }
+
       const res = await fetch(`/api/content/client/${clientId}/settings`);
       if (!res.ok) {
         if (res.status === 401) {
@@ -107,14 +114,14 @@ export default function ContentSettingsPage() {
             style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "0.8125rem", color: "#64748B", textDecoration: "none" }}
           >
             <ArrowLeft size={14} />
-            Back to Altitude Roofing
+            Back to {clientName}
           </Link>
         </div>
 
         {/* 2. HEADER */}
         <div style={{ marginBottom: "20px" }}>
           <h1 style={{ fontSize: "1.6rem", fontWeight: "800", color: "#0F172A", margin: "0 0 4px 0", letterSpacing: "-0.5px" }}>
-            Content settings — Altitude Roofing
+            Content settings — {clientName}
           </h1>
           <p style={{ fontSize: "0.8125rem", color: "#64748B", margin: 0 }}>
             Sitemap location and last-refresh timestamps for the v2 pipeline.

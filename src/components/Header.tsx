@@ -126,38 +126,47 @@ export default function Header() {
   return (
     <header className={styles.header}>
       <div className={styles.navContainer}>
-        {/* Left Section: Logo & Links */}
+        {/* Left Section: Logo */}
         <div className={styles.leftSection}>
-          <Link href="/admin" className={styles.logo} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src="/logo.png" alt="MisterSK Infotech" style={{ height: "40px", width: "auto" }} />
+          <Link href="/admin" className={styles.logo} style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+            <img src="/logo.png" alt="Mister SK Infotech" style={{ height: "26px", width: "auto", objectFit: "contain" }} />
+            <span style={{ fontSize: "15px", fontWeight: "800", color: "#0F172A", letterSpacing: "-0.3px" }}>Mister SK</span>
           </Link>
         </div>
 
-        {/* Desktop Nav */}
+        {/* Center Desktop Navigation */}
         <nav className={styles.navList}>
-          {navLinks.map((link) => {
-            const isActive = link.href === "/admin"
-              ? pathname === "/admin"
-              : pathname.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`${styles.navLink} ${isActive ? styles.active : ""}`}
-              >
-                {link.name}
-              </Link>
-            );
-          })}
+          {/* 1. Dashboard */}
+          <Link
+            href="/admin"
+            className={`${styles.navLink} ${pathname === "/admin" ? styles.activePill : ""}`}
+          >
+            Dashboard
+          </Link>
 
-          {/* Content Dropdown */}
+          {/* 2. Clients */}
+          <Link
+            href="/admin/clients"
+            className={`${styles.navLink} ${pathname.startsWith("/admin/clients") ? styles.activePill : ""}`}
+          >
+            Clients
+          </Link>
+
+          {/* 3. Reports */}
+          <Link
+            href="/admin/reports"
+            className={`${styles.navLink} ${pathname.startsWith("/admin/reports") ? styles.activePill : ""}`}
+          >
+            Reports
+          </Link>
+
+          {/* 4. Content ▾ Dropdown */}
           <div className={styles.dropdown}>
             <Link
               href="/admin/content"
-              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/content") ? styles.active : ""}`}
-              style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/content") ? styles.activePill : ""}`}
             >
-              Content <ChevronDown size={14} style={{ marginLeft: "4px" }} />
+              Content <ChevronDown size={13} style={{ marginLeft: "2px" }} />
             </Link>
             <div className={styles.dropdownMenu}>
               {contentLinks.map((link) => (
@@ -174,30 +183,127 @@ export default function Header() {
             </div>
           </div>
 
+          {/* 5. Tickets */}
+          <Link
+            href="/admin/tickets"
+            className={`${styles.navLink} ${pathname.startsWith("/admin/tickets") ? styles.activePill : ""}`}
+          >
+            Tickets
+          </Link>
+
+          {/* 6. GSC (highlighted pill) */}
+          <Link
+            href="/admin/gsc"
+            className={`${styles.navLink} ${pathname.startsWith("/admin/gsc") ? styles.activePill : ""}`}
+          >
+            GSC
+          </Link>
+
+          {/* 7. On-Page ▾ */}
           <div className={styles.dropdown}>
-            <button className={`${styles.navLink} ${styles.dropdownTrigger}`} style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}>
-              SEO Tools <ChevronDown size={14} style={{ marginLeft: "4px" }} />
-            </button>
+            <Link
+              href="/admin/onpage"
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/onpage") ? styles.activePill : ""}`}
+            >
+              On-Page <ChevronDown size={13} style={{ marginLeft: "2px" }} />
+            </Link>
             <div className={styles.dropdownMenu}>
-              {otherLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={styles.dropdownItem}
-                >
-                  {link.name}
-                </Link>
-              ))}
+              <Link href="/admin/onpage" className={styles.dropdownItem}>On-Page Tools</Link>
+              <Link href="/admin/onpage/audits" className={styles.dropdownItem}>On-Page Audits</Link>
+              <Link href="/admin/onpage/mapping" className={styles.dropdownItem}>Keyword Mapping</Link>
+              <Link href="/admin/onpage/meta" className={styles.dropdownItem}>Meta Generator</Link>
+              <Link href="/admin/onpage/opportunities" className={styles.dropdownItem}>Opportunity Worklist</Link>
+            </div>
+          </div>
+
+          {/* 8. Rankings ▾ */}
+          <div className={styles.dropdown}>
+            <Link
+              href="/admin/rankings"
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/rankings") ? styles.activePill : ""}`}
+            >
+              Rankings <ChevronDown size={13} style={{ marginLeft: "2px" }} />
+            </Link>
+            <div className={styles.dropdownMenu}>
+              <Link href="/admin/rankings" className={styles.dropdownItem}>Rankings Overview</Link>
+            </div>
+          </div>
+
+          {/* 9. Links ▾ */}
+          <div className={styles.dropdown}>
+            <Link
+              href="/admin/links"
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/links") ? styles.activePill : ""}`}
+            >
+              Links <ChevronDown size={13} style={{ marginLeft: "2px" }} />
+            </Link>
+            <div className={styles.dropdownMenu}>
+              <Link href="/admin/links" className={styles.dropdownItem}>Link Building Hub</Link>
+              <Link href="/admin/links/analysis" className={styles.dropdownItem}>Backlink Analysis</Link>
+              <Link href="/admin/links/prospects" className={styles.dropdownItem}>Prospect Pipeline</Link>
+              <Link href="/admin/links/queue" className={styles.dropdownItem}>Action Queue</Link>
+              <Link href="/admin/links/competitors" className={styles.dropdownItem}>Competitor Tracking</Link>
+              <Link href="/admin/links/nap" className={styles.dropdownItem}>NAP Checker</Link>
+              <Link href="/admin/links/content" className={styles.dropdownItem}>Content Scoring</Link>
+              <Link href="/admin/links/campaigns" className={styles.dropdownItem}>Campaigns Directory</Link>
+              <Link href="/admin/links/va-queue" className={styles.dropdownItem}>VA Contact Queue</Link>
+              <Link href="/admin/links/replies" className={styles.dropdownItem}>Reply Inbox</Link>
+              <Link href="/admin/links/tracker" className={styles.dropdownItem}>Link Tracker</Link>
+              <Link href="/admin/links/settings" className={styles.dropdownItem}>Settings</Link>
+            </div>
+          </div>
+
+          {/* 10. PR ▾ */}
+          <div className={styles.dropdown}>
+            <Link
+              href="/admin/pr"
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/pr") ? styles.activePill : ""}`}
+            >
+              PR <ChevronDown size={13} style={{ marginLeft: "2px" }} />
+            </Link>
+            <div className={styles.dropdownMenu}>
+              <Link href="/admin/pr" className={styles.dropdownItem}>PR Pipeline</Link>
+              <Link href="/admin/pr/calendar" className={styles.dropdownItem}>Calendar &amp; Intake</Link>
+              <Link href="/admin/pr/requests" className={styles.dropdownItem}>Journalist Requests</Link>
+              <Link href="/admin/pr/opportunities" className={styles.dropdownItem}>Asset Opportunities</Link>
+              <Link href="/admin/pr/results" className={styles.dropdownItem}>PR Results</Link>
+              <Link href="/admin/pr/national-dates" className={styles.dropdownItem}>National Dates</Link>
+              <Link href="/admin/pr/verticals" className={styles.dropdownItem}>Verticals</Link>
+              <Link href="/admin/pr/clients" className={styles.dropdownItem}>PR Clients</Link>
+              <Link href="/admin/pr/settings" className={styles.dropdownItem}>PR Settings</Link>
+            </div>
+          </div>
+
+          {/* 11. GBP */}
+          <Link
+            href="/admin/gbp"
+            className={`${styles.navLink} ${pathname.startsWith("/admin/gbp") ? styles.activePill : ""}`}
+          >
+            GBP
+          </Link>
+
+          {/* 12. Ops ▾ */}
+          <div className={styles.dropdown}>
+            <Link
+              href="/admin/ops"
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/ops") ? styles.activePill : ""}`}
+            >
+              Ops <ChevronDown size={13} style={{ marginLeft: "2px" }} />
+            </Link>
+            <div className={styles.dropdownMenu}>
+              <Link href="/admin/ops" className={styles.dropdownItem}>Operations Dashboard</Link>
+              <Link href="/admin/ops/errors" className={styles.dropdownItem}>App Errors</Link>
+              <Link href="/admin/ops/email-health" className={styles.dropdownItem}>Email Health</Link>
             </div>
           </div>
         </nav>
 
-        {/* Right Section: Controls & Avatar */}
+        {/* Right Section: Bell, Cog, Divider, Logout */}
         <div className={styles.rightSection}>
           {/* Notifications */}
           <div className={styles.notificationMenu}>
-            <button className={styles.controlBtn} aria-label="Notifications" onMouseEnter={fetchNotifications} onFocus={fetchNotifications}>
-              <Bell size={18} />
+            <button className={styles.iconBtn} aria-label="Notifications" onMouseEnter={fetchNotifications} onFocus={fetchNotifications}>
+              <Bell size={18} color="#475569" strokeWidth={1.8} />
               {notifications.length > 0 && <div className={styles.notificationBadge} />}
             </button>
 
@@ -240,28 +346,17 @@ export default function Header() {
           </div>
 
           {/* Settings */}
-          <button className={styles.controlBtn} aria-label="Settings" title="Settings (coming soon)">
-            <Settings size={18} />
-          </button>
+          <Link href="/admin/gsc/settings" className={styles.iconBtn} aria-label="Settings" title="Settings">
+            <Settings size={18} color="#475569" strokeWidth={1.8} />
+          </Link>
 
-          {/* User Menu */}
-          <div className={styles.userMenu}>
-            <button className={styles.userTrigger}>
-              <div className={styles.avatar}>
-                {getInitials(user?.name)}
-              </div>
-            </button>
-            <div className={styles.userDropdown}>
-              <div className={styles.userInfo}>
-                <div className={styles.userName}>{user?.name || "Loading..."}</div>
-                <div className={styles.userEmail}>{user?.email || "loading@mistersk.com"}</div>
-              </div>
-              <button onClick={handleLogout} className={styles.logoutBtn}>
-                <LogOut size={14} />
-                Logout
-              </button>
-            </div>
-          </div>
+          {/* Vertical Separator */}
+          <div style={{ width: "1px", height: "20px", background: "#E2E8F0", margin: "0 2px" }} />
+
+          {/* Logout Button */}
+          <button onClick={handleLogout} className={styles.logoutBtnBox}>
+            Logout
+          </button>
 
           {/* Mobile Toggle */}
           <button

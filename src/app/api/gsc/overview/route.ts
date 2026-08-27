@@ -10,15 +10,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
-    // Find all properties that have a GSC connection
+    // Find all website properties from the database
     const properties = await prisma.websiteProperty.findMany({
-      where: {
-        connections: {
-          some: { provider: "GSC", status: "CONNECTED" }
-        }
-      },
       include: {
-        client: { select: { name: true } },
+        client: { select: { id: true, name: true } },
+        connections: { where: { provider: "GSC" } },
         snapshots: {
           where: {
             date: {
@@ -30,21 +26,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    interface SnapshotRecord {
-      date: Date;
-      organicTraffic: number;
-      gscImpressions: number;
-      gscPosition: number;
-    }
-    interface GscPropRecord {
-      id: string | number;
-      domain: string;
-      clientId: string | number;
-      client: { name: string };
-      snapshots: SnapshotRecord[];
-    }
-
-    const data = (properties as unknown as GscPropRecord[]).map((p) => {
+    const formatProperty = (p: typeof properties[0]) => {
       let totalClicks = 0;
       let totalImpressions = 0;
       let positionSum = 0;
@@ -64,21 +46,33 @@ export async function GET(req: NextRequest) {
         };
       });
 
+      const isConnected = (p.connections || []).some(c => c.status === "CONNECTED");
+
       return {
         id: p.id,
         domain: p.domain,
         clientId: p.clientId,
-        clientName: p.client.name,
+        clientName: p.client?.name || p.name || p.domain,
         clicks: totalClicks,
         impressions: totalImpressions,
         avgPosition: count > 0 ? (positionSum / count).toFixed(1) : "0.0",
+        isConnected,
         chartData
       };
-    });
+    };
 
-    return NextResponse.json({ data });
+    const formatted = properties.map(formatProperty);
+
+    // Split into client sites vs internal sites based on client name or brandType
+    const clientSites = formatted.filter(p => !p.domain.includes("internal") && !p.clientName.toLowerCase().includes("internal"));
+    const internalSites = formatted.filter(p => p.domain.includes("internal") || p.clientName.toLowerCase().includes("internal"));
+
+    return NextResponse.json({ 
+      data: formatted,
+      clientSites: clientSites.length > 0 ? clientSites : formatted,
+      internalSites
+    });
   } catch (error: unknown) {
-    const errObj = error as Error;
     console.error("GSC Overview API Error:", error);
     return NextResponse.json({ error: "Failed to load GSC overview" }, { status: 500 });
   }
