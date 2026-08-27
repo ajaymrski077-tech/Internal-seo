@@ -558,6 +558,12 @@
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
 }
 
+.metricCardActive {
+  border-color: #0f4c5c !important;
+  box-shadow: 0 0 0 2px rgba(15, 76, 92, 0.25), 0 8px 25px rgba(0, 0, 0, 0.06) !important;
+  background: linear-gradient(145deg, var(--bg-card, #ffffff), rgba(15, 76, 92, 0.03)) !important;
+}
+
 .metricLabel {
   font-size: 0.75rem;
   font-weight: 600;

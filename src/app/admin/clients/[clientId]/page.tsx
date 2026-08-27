@@ -743,6 +743,9 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
     }
   };
 
+  // Hover tracking for interactive SVG chart
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
   // SVG Trend Line Chart Coordinates mapper (Multi-tab reusable)
   const renderSVGChart = (metricKey: "sessions" | "organicTraffic" | "conversions") => {
     const currentHist = history?.current || [];
@@ -756,62 +759,244 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
       );
     }
 
-    const currentValues = currentHist.map(h => h[metricKey]);
-    const prevValues = prevHist.map(h => h[metricKey]);
-    const maxVal = Math.max(...currentValues, ...prevValues, 100);
+    const currentValues = currentHist.map(h => h[metricKey] || 0);
+    const prevValues = prevHist.map(h => h[metricKey] || 0);
+    const rawMax = Math.max(...currentValues, ...prevValues, 0);
+    const maxVal = rawMax > 0 ? Math.ceil(rawMax * 1.25) : 10;
     const minVal = 0;
-    const paddingY = 20;
-    const chartHeight = 220;
-    const width = 1100;
-    const stepX = width / (currentHist.length - 1);
+    const paddingLeft = 50;
+    const paddingRight = 20;
+    const paddingTop = 25;
+    const paddingBottom = 35;
+    const chartHeight = 240;
+    const width = 1000;
+    const plotWidth = width - paddingLeft - paddingRight;
+    const plotHeight = chartHeight - paddingTop - paddingBottom;
+    const stepX = plotWidth / (currentHist.length - 1);
 
-    const getPointsStr = (dataset: typeof currentHist) => {
-      return dataset.map((pt, idx) => {
-        const val = pt[metricKey] || 0;
-        const x = idx * stepX;
-        const y = chartHeight - paddingY - ((val - minVal) / (maxVal - minVal)) * (chartHeight - paddingY * 2);
-        return `${x},${y}`;
-      }).join(" ");
+    const getY = (val: number) => {
+      const clamped = Math.max(minVal, Math.min(maxVal, val));
+      return paddingTop + plotHeight - ((clamped - minVal) / (maxVal - minVal)) * plotHeight;
     };
 
-    const currentPoints = getPointsStr(currentHist);
-    const prevPoints = prevHist.length >= 2 ? getPointsStr(prevHist) : "";
+    const getX = (idx: number) => {
+      return paddingLeft + idx * stepX;
+    };
+
+    const currentPoints = currentHist.map((pt, idx) => `${getX(idx)},${getY(pt[metricKey] || 0)}`).join(" ");
+    const prevPoints = prevHist.length >= 2 
+      ? prevHist.map((pt, idx) => `${paddingLeft + idx * (plotWidth / (prevHist.length - 1))},${getY(pt[metricKey] || 0)}`).join(" ")
+      : "";
+
+    // X-axis label ticks (choose up to 6 evenly spaced points)
+    const labelStep = Math.max(1, Math.floor((currentHist.length - 1) / 5));
+    const labelIndices: number[] = [];
+    for (let i = 0; i < currentHist.length; i += labelStep) {
+      labelIndices.push(i);
+    }
+    if (labelIndices[labelIndices.length - 1] !== currentHist.length - 1) {
+      labelIndices.push(currentHist.length - 1);
+    }
+
+    const hoveredCurrentPoint = hoveredIndex !== null && currentHist[hoveredIndex] ? currentHist[hoveredIndex] : null;
+    const hoveredPrevPoint = hoveredIndex !== null && prevHist[hoveredIndex] ? prevHist[hoveredIndex] : null;
+    const hoveredX = hoveredIndex !== null ? getX(hoveredIndex) : 0;
+    const hoveredY = hoveredCurrentPoint ? getY(hoveredCurrentPoint[metricKey] || 0) : 0;
 
     return (
-      <div className={styles.chartContainer}>
-        <svg className={styles.chartSvg} viewBox={`0 0 ${width} ${chartHeight}`} preserveAspectRatio="none">
+      <div 
+        className={styles.chartContainer}
+        style={{ height: `${chartHeight}px`, position: "relative", userSelect: "none" }}
+        onMouseLeave={() => setHoveredIndex(null)}
+      >
+        <svg 
+          className={styles.chartSvg} 
+          viewBox={`0 0 ${width} ${chartHeight}`} 
+          preserveAspectRatio="none"
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const mouseX = ((e.clientX - rect.left) / rect.width) * width;
+            const relativeX = mouseX - paddingLeft;
+            const clampedX = Math.max(0, Math.min(plotWidth, relativeX));
+            const nearestIdx = Math.round(clampedX / stepX);
+            if (nearestIdx >= 0 && nearestIdx < currentHist.length) {
+              setHoveredIndex(nearestIdx);
+            }
+          }}
+        >
           <defs>
-            <linearGradient id="currentGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--accent-color)" stopOpacity="0.1" />
-              <stop offset="100%" stopColor="var(--accent-color)" stopOpacity="0.0" />
+            <linearGradient id="currentLineGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0f4c5c" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#0f4c5c" stopOpacity="0.0" />
             </linearGradient>
-            <linearGradient id="prevGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--text-muted)" stopOpacity="0.05" />
-              <stop offset="100%" stopColor="var(--text-muted)" stopOpacity="0.0" />
+            <linearGradient id="prevLineGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
-          <line x1="0" y1={paddingY} x2={width} y2={paddingY} stroke="var(--border-color)" strokeWidth="1" strokeDasharray="4 4" />
-          <line x1="0" y1={chartHeight / 2} x2={width} y2={chartHeight / 2} stroke="var(--border-color)" strokeWidth="1" strokeDasharray="4 4" />
-          <line x1="0" y1={chartHeight - paddingY} x2={width} y2={chartHeight - paddingY} stroke="var(--border-color)" strokeWidth="1" strokeDasharray="4 4" />
+          {/* Background Grid Lines & Y-axis labels */}
+          {[0, 0.5, 1].map((pct, i) => {
+            const y = paddingTop + plotHeight * pct;
+            const val = Math.round(maxVal * (1 - pct));
+            return (
+              <g key={i}>
+                <line 
+                  x1={paddingLeft} 
+                  y1={y} 
+                  x2={width - paddingRight} 
+                  y2={y} 
+                  stroke="var(--border-color, #e2e8f0)" 
+                  strokeWidth="1" 
+                  strokeDasharray="4 4" 
+                />
+                <text 
+                  x={paddingLeft - 10} 
+                  y={y + 4} 
+                  textAnchor="end" 
+                  fontSize="11" 
+                  fill="var(--text-muted, #64748b)" 
+                  fontFamily="system-ui, -apple-system, sans-serif"
+                >
+                  {val.toLocaleString()}
+                </text>
+              </g>
+            );
+          })}
 
-          {/* Fills */}
+          {/* Area Fills */}
           {prevPoints && (
-            <path d={`M 0,${chartHeight - paddingY} L ${prevPoints} L ${width},${chartHeight - paddingY} Z`} fill="url(#prevGrad)" />
+            <path 
+              d={`M ${paddingLeft},${paddingTop + plotHeight} L ${prevPoints} L ${width - paddingRight},${paddingTop + plotHeight} Z`} 
+              fill="url(#prevLineGrad)" 
+            />
           )}
           {currentPoints && (
-            <path d={`M 0,${chartHeight - paddingY} L ${currentPoints} L ${width},${chartHeight - paddingY} Z`} fill="url(#currentGrad)" />
+            <path 
+              d={`M ${paddingLeft},${paddingTop + plotHeight} L ${currentPoints} L ${width - paddingRight},${paddingTop + plotHeight} Z`} 
+              fill="url(#currentLineGrad)" 
+            />
           )}
 
-          {/* Lines */}
+          {/* Trend Lines */}
           {prevPoints && (
-            <polyline fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeDasharray="4 4" points={prevPoints} opacity="0.6" />
+            <polyline 
+              fill="none" 
+              stroke="#94a3b8" 
+              strokeWidth="1.75" 
+              strokeDasharray="4 4" 
+              points={prevPoints} 
+              opacity="0.8" 
+            />
           )}
           {currentPoints && (
-            <polyline fill="none" stroke="var(--accent-color)" strokeWidth="2.5" points={currentPoints} />
+            <polyline 
+              fill="none" 
+              stroke="#0f4c5c" 
+              strokeWidth="2.75" 
+              points={currentPoints} 
+            />
+          )}
+
+          {/* X-axis Date Labels */}
+          {labelIndices.map((idx) => {
+            const pt = currentHist[idx];
+            if (!pt) return null;
+            const x = getX(idx);
+            const d = new Date(pt.date);
+            const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            return (
+              <text 
+                key={idx} 
+                x={x} 
+                y={chartHeight - 10} 
+                textAnchor="middle" 
+                fontSize="11" 
+                fill="var(--text-muted, #64748b)" 
+                fontFamily="system-ui, -apple-system, sans-serif"
+              >
+                {label}
+              </text>
+            );
+          })}
+
+          {/* Hover Crosshair and Dot Markers */}
+          {hoveredIndex !== null && (
+            <g>
+              <line 
+                x1={hoveredX} 
+                y1={paddingTop} 
+                x2={hoveredX} 
+                y2={paddingTop + plotHeight} 
+                stroke="#0f4c5c" 
+                strokeWidth="1.5" 
+                strokeDasharray="3 3" 
+              />
+              <circle 
+                cx={hoveredX} 
+                cy={hoveredY} 
+                r="5" 
+                fill="#0f4c5c" 
+                stroke="#ffffff" 
+                strokeWidth="2.5" 
+              />
+              {hoveredPrevPoint && (
+                <circle 
+                  cx={hoveredX} 
+                  cy={getY(hoveredPrevPoint[metricKey] || 0)} 
+                  r="4" 
+                  fill="#94a3b8" 
+                  stroke="#ffffff" 
+                  strokeWidth="2" 
+                />
+              )}
+            </g>
           )}
         </svg>
+
+        {/* Floating Tooltip Box */}
+        {hoveredCurrentPoint && (
+          <div 
+            style={{
+              position: "absolute",
+              left: `${Math.min(Math.max(hoveredX, 100), width - 120) / width * 100}%`,
+              top: "10px",
+              transform: "translateX(-50%)",
+              background: "rgba(15, 23, 42, 0.92)",
+              color: "#ffffff",
+              padding: "8px 12px",
+              borderRadius: "8px",
+              fontSize: "0.775rem",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+              pointerEvents: "none",
+              zIndex: 10,
+              display: "flex",
+              flexDirection: "column",
+              gap: "4px",
+              minWidth: "160px"
+            }}
+          >
+            <div style={{ fontWeight: "600", borderBottom: "1px solid rgba(255,255,255,0.15)", paddingBottom: "4px", marginBottom: "2px" }}>
+              {new Date(hoveredCurrentPoint.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#38bdf8", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#38bdf8", display: "inline-block" }}></span>
+                Current:
+              </span>
+              <strong style={{ fontSize: "0.85rem" }}>{(hoveredCurrentPoint[metricKey] || 0).toLocaleString()}</strong>
+            </div>
+            {hoveredPrevPoint && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "#94a3b8" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#94a3b8", display: "inline-block" }}></span>
+                  Previous:
+                </span>
+                <span>{(hoveredPrevPoint[metricKey] || 0).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -1025,7 +1210,12 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
               {/* Performance Cards Grid */}
               <div className={styles.metricsGrid}>
                 {/* Sessions */}
-                <div className={styles.metricCard}>
+                <div 
+                  className={`${styles.metricCard} ${activeMetric === "sessions" ? styles.metricCardActive : ""}`}
+                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+                  onClick={() => setActiveMetric("sessions")}
+                  title="Click to view Organic Sessions on chart"
+                >
                   <span className={styles.metricLabel}>Organic Sessions (GA4)</span>
                   <span className={styles.metricVal}>
                     {metrics?.sessions.toLocaleString() || 0}
@@ -1042,7 +1232,12 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
                 </div>
 
                 {/* Clicks */}
-                <div className={styles.metricCard}>
+                <div 
+                  className={`${styles.metricCard} ${activeMetric === "organicTraffic" ? styles.metricCardActive : ""}`}
+                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+                  onClick={() => setActiveMetric("organicTraffic")}
+                  title="Click to view Search Clicks on chart"
+                >
                   <span className={styles.metricLabel}>Search Clicks (GSC)</span>
                   <span className={styles.metricVal}>
                     {metrics?.organicTraffic.toLocaleString() || 0}
@@ -1059,7 +1254,12 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
                 </div>
 
                 {/* Conversions */}
-                <div className={styles.metricCard}>
+                <div 
+                  className={`${styles.metricCard} ${activeMetric === "conversions" ? styles.metricCardActive : ""}`}
+                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
+                  onClick={() => setActiveMetric("conversions")}
+                  title="Click to view Goal Conversions on chart"
+                >
                   <span className={styles.metricLabel}>Goal Conversions (GA4)</span>
                   <span className={styles.metricVal}>
                     {metrics?.conversions.toLocaleString() || 0}
@@ -1078,15 +1278,34 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
 
               {/* Chart section */}
               <div className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <span className={styles.cardTitle}>Performance Timeline</span>
-                  <div style={{ display: "flex", gap: "16px", fontSize: "0.75rem" }}>
+                <div className={styles.cardHeader} style={{ flexWrap: "wrap", gap: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                    <span className={styles.cardTitle} style={{ margin: 0 }}>Performance Timeline</span>
+                    <div className={styles.pillGroup}>
+                      {[
+                        { id: "sessions" as const, label: "GA4 Sessions" },
+                        { id: "organicTraffic" as const, label: "Search Clicks (GSC)" },
+                        { id: "conversions" as const, label: "Conversions" }
+                      ].map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className={`${styles.pillBtn} ${activeMetric === m.id ? styles.pillBtnActive : ""}`}
+                          onClick={() => setActiveMetric(m.id)}
+                          style={{ fontSize: "0.725rem", padding: "4px 8px" }}
+                        >
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "16px", fontSize: "0.75rem", alignItems: "center" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <div style={{ width: "12px", height: "3px", background: "var(--accent-color)" }} />
+                      <div style={{ width: "12px", height: "3px", background: "#0f4c5c", borderRadius: "2px" }} />
                       <span style={{ color: "var(--text-secondary)" }}>Current Period</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <div style={{ width: "12px", height: "3px", background: "var(--text-muted)", opacity: 0.6 }} />
+                      <div style={{ width: "12px", height: "3px", background: "#94a3b8", opacity: 0.8, borderRadius: "2px" }} />
                       <span style={{ color: "var(--text-secondary)" }}>Previous Period</span>
                     </div>
 

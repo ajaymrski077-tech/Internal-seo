@@ -253,7 +253,7 @@ export const getClientHistory = async (
 };
 
 // Import google APIs
-import { getGa4Client, getGscClient, getDecryptedCredentials } from "./googleApiService";
+import { getGa4Client, getGscClient, getDecryptedCredentials, listGscSites } from "./googleApiService";
 import { syncPropertyKeywords } from "./rankingsService";
 
 export const syncPropertyData = async (propertyId: string | number, daysToSync: number = 30) => {
@@ -328,52 +328,71 @@ export const syncPropertyData = async (propertyId: string | number, daysToSync: 
   }
 
   // 2. Fetch GSC Data
-  if (gscConn && gscConn.externalId) {
-    try {
-      const { accessToken, refreshToken } = await getDecryptedCredentials(gscConn.id);
-      if (accessToken) {
-        const gscClient = getGscClient(gscConn.id, accessToken, refreshToken || undefined);
-        
-        const response = await gscClient.searchanalytics.query({
-          siteUrl: gscConn.externalId,
-          requestBody: {
-            startDate: startDate.toISOString().split("T")[0],
-            endDate: "today",
-            dimensions: ["date"],
-          }
-        });
+  if (gscConn) {
+    let siteUrl = gscConn.externalId;
+    if ((!siteUrl || siteUrl.trim() === "") && gscConn.accessToken) {
+      try {
+        const sites = await listGscSites(gscConn.id);
+        const match = sites.find(s => s.siteUrl.includes(property.domain) || property.domain.includes(s.siteUrl.replace(/^(https?:\/\/)?(www\.)?/, "").replace(/\/$/, "")));
+        if (match) {
+          siteUrl = match.siteUrl;
+          await prisma.integrationConnection.update({
+            where: { id: gscConn.id },
+            data: { externalId: siteUrl }
+          });
+        }
+      } catch (err) {
+        console.error("Failed to auto-resolve GSC siteUrl:", err);
+      }
+    }
 
-        if (response.data.rows) {
-          for (const row of response.data.rows) {
-            const dateVal = row.keys?.[0]; // YYYY-MM-DD
-            if (dateVal && dailyMetrics[dateVal]) {
-              dailyMetrics[dateVal].organicTraffic = row.clicks || 0;
-              dailyMetrics[dateVal].gscImpressions = row.impressions || 0;
-              dailyMetrics[dateVal].gscPosition = row.position || 0.0;
+    if (siteUrl && siteUrl.trim() !== "") {
+      try {
+        const { accessToken, refreshToken } = await getDecryptedCredentials(gscConn.id);
+        if (accessToken) {
+          const gscClient = getGscClient(gscConn.id, accessToken, refreshToken || undefined);
+          
+          const response = await gscClient.searchanalytics.query({
+            siteUrl: siteUrl.trim(),
+            requestBody: {
+              startDate: startDate.toISOString().split("T")[0],
+              endDate: endDate.toISOString().split("T")[0],
+              dimensions: ["date"],
+            }
+          });
+
+          if (response.data.rows) {
+            for (const row of response.data.rows) {
+              const dateVal = row.keys?.[0]; // YYYY-MM-DD
+              if (dateVal && dailyMetrics[dateVal]) {
+                dailyMetrics[dateVal].organicTraffic = row.clicks || 0;
+                dailyMetrics[dateVal].gscImpressions = row.impressions || 0;
+                dailyMetrics[dateVal].gscPosition = row.position || 0.0;
+              }
             }
           }
-        }
 
-        // Update sync status
+          // Update sync status
+          await prisma.integrationConnection.update({
+            where: { id: gscConn.id },
+            data: { syncStatus: "SUCCESS", lastSyncTime: new Date(), syncError: null }
+          });
+
+          // Sync Tracked Keywords
+          try {
+            await syncPropertyKeywords(property.id, daysToSync);
+          } catch (kwErr) {
+            console.error("Failed to sync property keywords:", kwErr);
+          }
+        }
+      } catch (err: unknown) {
+        const errorObj = err as Error;
+        console.error("GSC Sync Error:", err);
         await prisma.integrationConnection.update({
           where: { id: gscConn.id },
-          data: { syncStatus: "SUCCESS", lastSyncTime: new Date() }
+          data: { syncStatus: "FAILED", syncError: errorObj?.message || "GSC Sync Error", status: "SYNC_ERROR" }
         });
-
-        // Sync Tracked Keywords
-        try {
-          await syncPropertyKeywords(property.id, daysToSync);
-        } catch (kwErr) {
-          console.error("Failed to sync property keywords:", kwErr);
-        }
       }
-    } catch (err: unknown) {
-      const errorObj = err as Error;
-      console.error("GSC Sync Error:", err);
-      await prisma.integrationConnection.update({
-        where: { id: gscConn.id },
-        data: { syncStatus: "FAILED", syncError: errorObj?.message || "GSC Sync Error", status: "SYNC_ERROR" }
-      });
     }
   }
 
