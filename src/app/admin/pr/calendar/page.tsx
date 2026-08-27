@@ -12,6 +12,7 @@ export default function PrCalendarIntakePage() {
   const [trigger, setTrigger] = useState("Seasonal (dated peg)");
   const [targetDate, setTargetDate] = useState("2026-10-01");
   const [leadTime, setLeadTime] = useState(3);
+  const [source, setSource] = useState("Manual");
   const [runWhenReady, setRunWhenReady] = useState(false);
   const [brainstormSeeds, setBrainstormSeeds] = useState<any[]>([]);
   const [loadingSeeds, setLoadingSeeds] = useState(true);
