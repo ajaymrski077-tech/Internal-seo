@@ -563,12 +563,12 @@ export const getClientsReportsSummary = async (search?: string, showArchived: bo
   });
 
   return clients.map((c) => {
-    const totalReports = c.reports.length;
-    const mostRecent = c.reports[0] || null;
+    const totalReports = c.reports?.length ?? 0;
+    const mostRecent = c.reports?.[0] ?? null;
     return {
       id: c.id,
       name: c.name,
-      domain: c.properties[0]?.domain || "example.com",
+      domain: c.properties?.[0]?.domain || "example.com",
       totalReports,
       mostRecentReport: mostRecent
         ? {
@@ -628,7 +628,7 @@ export const getClientReportsWorkspace = async (clientId: string) => {
     };
     let deliveriesList: Array<{ type: string }> = [];
 
-    if (r.snapshots[0]) {
+    if (r.snapshots && r.snapshots[0]) {
       try {
         metrics = JSON.parse(r.snapshots[0].metricsJson || "{}");
       } catch {}
@@ -666,7 +666,7 @@ export const getClientReportsWorkspace = async (clientId: string) => {
       id: client.id,
       name: client.name,
       companyName: client.companyName,
-      domain: client.properties[0]?.domain || "example.com",
+      domain: client.properties?.[0]?.domain || "example.com",
       createdAt: client.createdAt,
     },
     kpis: {
