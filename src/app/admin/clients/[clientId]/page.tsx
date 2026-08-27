@@ -143,10 +143,15 @@ export default function ClientWorkspacePage() {
     try {
       const res = await fetch(`/api/clients/${clientId}/workspace?range=${range}`);
       if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error("Client not found.");
+        if (res.status === 401) {
+          router.push("/login");
+          return;
         }
-        throw new Error("Failed to load client workspace.");
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 404) {
+          throw new Error(errorData.error || "Client not found.");
+        }
+        throw new Error(errorData.error || "Failed to load client workspace.");
       }
       const payload: WorkspacePayload = await res.json();
       setData(payload);
@@ -157,7 +162,7 @@ export default function ClientWorkspacePage() {
     } finally {
       setLoading(false);
     }
-  }, [clientId, range]);
+  }, [clientId, range, router]);
 
   useEffect(() => {
     fetchWorkspace();
