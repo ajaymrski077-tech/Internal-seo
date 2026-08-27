@@ -287,16 +287,19 @@ export default function TicketsPage() {
                 {activeTickets.length === 0 ? (
                   <tr><td colSpan={8} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>No active tickets</td></tr>
                 ) : (
-                  activeTickets.map((ticket, i) => (
                     <tr 
                       key={ticket.id} 
                       style={{ borderTop: i === 0 ? "none" : "1px solid #F1F5F9", transition: "background 0.2s", cursor: "pointer" }} 
                       onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"} 
                       onMouseLeave={e => e.currentTarget.style.background = "white"}
-                      onClick={() => openEditModal(ticket)}
+                      onClick={() => window.location.href = `/admin/tickets/${ticket.id}`}
                     >
                       <td style={{ padding: "16px 24px", color: "#64748B" }}>{ticket.id}</td>
-                      <td style={{ padding: "16px 24px", color: "#0F172A", fontWeight: "500", maxWidth: "300px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ticket.subject}</td>
+                      <td style={{ padding: "16px 24px", color: "#0F172A", fontWeight: "500", maxWidth: "300px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <Link href={`/admin/tickets/${ticket.id}`} style={{ color: "#0F172A", textDecoration: "none" }} onClick={e => e.stopPropagation()}>
+                          {ticket.subject}
+                        </Link>
+                      </td>
                       <td style={{ padding: "16px 24px", color: "#475569" }}>{ticket.client?.name}</td>
                       <td style={{ padding: "16px 24px", color: "#475569" }}>{ticket.fromName}</td>
                       <td style={{ padding: "16px 24px" }}>{getStatusBadge(ticket.status)}</td>
