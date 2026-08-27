@@ -287,6 +287,7 @@ export default function TicketsPage() {
                 {activeTickets.length === 0 ? (
                   <tr><td colSpan={8} style={{ padding: "24px", textAlign: "center", color: "#94A3B8" }}>No active tickets</td></tr>
                 ) : (
+                  activeTickets.map((ticket, i) => (
                     <tr 
                       key={ticket.id} 
                       style={{ borderTop: i === 0 ? "none" : "1px solid #F1F5F9", transition: "background 0.2s", cursor: "pointer" }} 
