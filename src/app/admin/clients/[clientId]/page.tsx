@@ -9,7 +9,12 @@ import {
   Settings,
   AlertCircle,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  RefreshCw,
+  CheckCircle,
+  AlertTriangle,
+  Play,
+  Trash2
 } from "lucide-react";
 import styles from "@/styles/ClientWorkspace.module.css";
 import { useToast } from "@/components/ToastContext";
@@ -120,7 +125,20 @@ export default function ClientWorkspacePage() {
 
   // Range and Tab States
   const [range, setRange] = useState("30d"); // 7d, 30d, 60d, 90d
-  const [activeTab, setActiveTab] = useState<"overview" | "channels">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "channels" | "integrations">("overview");
+
+  // Integrations state
+  const [ga4Id, setGa4Id] = useState("");
+  const [ga4Event, setGa4Event] = useState("");
+  const [gscId, setGscId] = useState("");
+  const [gbpId, setGbpId] = useState("");
+  const [savingConn, setSavingConn] = useState<string | null>(null);
+  const [syncingConn, setSyncingConn] = useState<string | null>(null);
+
+  // Discovered properties list
+  const [discoveredGa4, setDiscoveredGa4] = useState<any[]>([]);
+  const [discoveredGsc, setDiscoveredGsc] = useState<any[]>([]);
+  const [discovering, setDiscovering] = useState<string | null>(null);
 
   // Core Data States
   const [data, setData] = useState<WorkspacePayload | null>(null);
@@ -163,6 +181,133 @@ export default function ClientWorkspacePage() {
       setLoading(false);
     }
   }, [clientId, range, router]);
+
+  // Pre-populate connection fields when data is fetched
+  useEffect(() => {
+    if (data?.client?.properties?.[0]?.connections) {
+      const conns = data.client.properties[0].connections;
+      const ga4 = conns.find((c: any) => c.provider === "GA4");
+      const gsc = conns.find((c: any) => c.provider === "GSC");
+      const gbp = conns.find((c: any) => c.provider === "GBP");
+      if (ga4) {
+        setGa4Id(ga4.externalId || "");
+        setGa4Event(ga4.conversionEventName || "");
+      }
+      if (gsc) {
+        setGscId(gsc.externalId || "");
+      }
+      if (gbp) {
+        setGbpId(gbp.externalId || "");
+      }
+    }
+  }, [data]);
+
+  const handleSaveConnection = async (provider: string, externalId: string, extra: Record<string, any> = {}) => {
+    if (!externalId.trim()) {
+      toastError(`Please enter or select a valid ID for ${provider}`);
+      return;
+    }
+    setSavingConn(provider);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/connections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          externalId: externalId.trim(),
+          status: "CONNECTED",
+          ...extra
+        })
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        success(`${provider} connection saved successfully.`);
+        fetchWorkspace();
+      } else {
+        toastError(resData.error || `Failed to save ${provider} connection.`);
+      }
+    } catch (err) {
+      console.error(err);
+      toastError(`Failed to save ${provider} connection.`);
+    } finally {
+      setSavingConn(null);
+    }
+  };
+
+  const handleDisconnect = async (provider: string) => {
+    if (!window.confirm(`Are you sure you want to disconnect ${provider}?`)) return;
+    setSavingConn(provider);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/connections?provider=${provider}`, {
+        method: "DELETE"
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        success(`${provider} disconnected successfully.`);
+        if (provider === "GA4") { setGa4Id(""); setDiscoveredGa4([]); }
+        if (provider === "GSC") { setGscId(""); setDiscoveredGsc([]); }
+        if (provider === "GBP") { setGbpId(""); }
+        fetchWorkspace();
+      } else {
+        toastError(resData.error || `Failed to disconnect ${provider}.`);
+      }
+    } catch (err) {
+      console.error(err);
+      toastError(`Failed to disconnect ${provider}.`);
+    } finally {
+      setSavingConn(null);
+    }
+  };
+
+  const handleSyncData = async (provider: string) => {
+    setSyncingConn(provider);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/sync`, {
+        method: "POST"
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        success("Synchronization completed successfully.");
+        fetchWorkspace();
+      } else {
+        toastError(resData.error || "Failed to trigger synchronization.");
+      }
+    } catch (err) {
+      console.error(err);
+      toastError("Failed to trigger synchronization.");
+    } finally {
+      setSyncingConn(null);
+    }
+  };
+
+  const handleDiscover = async (provider: string) => {
+    setDiscovering(provider);
+    try {
+      const res = await fetch(`/api/clients/${clientId}/connections/discover-${provider.toLowerCase()}`);
+      const resData = await res.json();
+      if (res.ok) {
+        if (provider === "GA4") {
+          setDiscoveredGa4(resData.properties || []);
+          if (resData.properties?.length > 0) {
+            setGa4Id(resData.properties[0].propertyId);
+          }
+        } else if (provider === "GSC") {
+          setDiscoveredGsc(resData.sites || []);
+          if (resData.sites?.length > 0) {
+            setGscId(resData.sites[0].siteUrl);
+          }
+        }
+        success(`Discovered available ${provider} properties successfully.`);
+      } else {
+        toastError(resData.error || `Failed to fetch available ${provider} properties.`);
+      }
+    } catch (err) {
+      console.error(err);
+      toastError(`Failed to discover ${provider} properties.`);
+    } finally {
+      setDiscovering(null);
+    }
+  };
 
   useEffect(() => {
     fetchWorkspace();
@@ -692,7 +837,7 @@ export default function ClientWorkspacePage() {
         ))}
       </div>
 
-      {/* 4. SUB TABS: OVERVIEW | CHANNELS */}
+      {/* 4. SUB TABS: OVERVIEW | CHANNELS | INTEGRATIONS */}
       <div className={styles.subTabsRow}>
         <button
           className={`${styles.subTabBtn} ${activeTab === "overview" ? styles.subTabBtnActive : ""}`}
@@ -705,6 +850,12 @@ export default function ClientWorkspacePage() {
           onClick={() => setActiveTab("channels")}
         >
           Channels
+        </button>
+        <button
+          className={`${styles.subTabBtn} ${activeTab === "integrations" ? styles.subTabBtnActive : ""}`}
+          onClick={() => setActiveTab("integrations")}
+        >
+          Integrations
         </button>
       </div>
 
@@ -888,6 +1039,436 @@ export default function ClientWorkspacePage() {
             </div>
 
             {renderChannelDonutChart()}
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* TAB 3: INTEGRATIONS */}
+      {/* ============================================================= */}
+      {activeTab === "integrations" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          
+          {/* Main Info Card */}
+          <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "24px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: "700", color: "#0F172A", margin: "0 0 6px 0" }}>Manual Integration Connections</h2>
+            <p style={{ fontSize: "13px", color: "#64748B", margin: 0, lineHeight: "1.5" }}>
+              Connect this client's workspace properties manually to GSC, GA4, or GBP. 
+              Clicking "Sign in with Google" will redirect you to Google's secure authentication screen to authorize tokens.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "20px" }}>
+            
+            {/* 1. GOOGLE SEARCH CONSOLE (GSC) */}
+            {(() => {
+              const conns = data?.client?.properties?.[0]?.connections || [];
+              const conn = conns.find((c: any) => c.provider === "GSC");
+              const isConnected = !!conn;
+
+              return (
+                <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "360px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                  <div>
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                      <div>
+                        <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0F172A", margin: "0 0 2px 0" }}>Google Search Console</h3>
+                        <span style={{ fontSize: "11px", color: "#64748B", textTransform: "uppercase", fontWeight: "600" }}>GSC Connection</span>
+                      </div>
+                      
+                      {/* Status Badge */}
+                      {isConnected ? (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          background: conn.status === "CONNECTED" ? "#F0FDF4" : "#FEF2F2",
+                          color: conn.status === "CONNECTED" ? "#166534" : "#991B1B",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "12px"
+                        }}>
+                          <CheckCircle size={10} /> Connected
+                        </span>
+                      ) : (
+                        <span style={{
+                          background: "#F1F5F9",
+                          color: "#475569",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "12px"
+                        }}>
+                          Not Configured
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Connection details */}
+                    {isConnected && (
+                      <div style={{ fontSize: "12px", color: "#64748B", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px", background: "#F8FAFC", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+                        <div><strong>Connected Site URL:</strong> <code style={{ color: "#0F172A" }}>{conn.externalId || "Not set"}</code></div>
+                        <div><strong>Sync Status:</strong> {conn.syncStatus || "PENDING"}</div>
+                        {conn.syncError && <div style={{ color: "#DC2626" }}><strong>Sync Error:</strong> {conn.syncError}</div>}
+                        {conn.lastSyncTime && <div><strong>Last Sync:</strong> {new Date(conn.lastSyncTime).toLocaleString()}</div>}
+                      </div>
+                    )}
+
+                    {/* Config inputs */}
+                    {isConnected ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+                        <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Select GSC Site URL</label>
+                        {discoveredGsc.length > 0 ? (
+                          <select
+                            value={gscId}
+                            onChange={(e) => setGscId(e.target.value)}
+                            style={{ width: "100%", padding: "8px 10px", fontSize: "13px", border: "1px solid #CBD5E1", borderRadius: "6px", background: "white" }}
+                          >
+                            {discoveredGsc.map((s) => (
+                              <option key={s.siteUrl} value={s.siteUrl}>{s.siteUrl} ({s.permissionLevel})</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <input
+                              type="text"
+                              placeholder="e.g. sc-domain:example.com or https://example.com"
+                              value={gscId}
+                              onChange={(e) => setGscId(e.target.value)}
+                              style={{ flex: 1, padding: "8px 10px", fontSize: "13px", border: "1px solid #CBD5E1", borderRadius: "6px" }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleDiscover("GSC")}
+                              disabled={discovering === "GSC"}
+                              style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+                            >
+                              {discovering === "GSC" ? "Loading..." : "Discover"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: "12.5px", color: "#64748B", lineHeight: "1.5", margin: "0 0 20px 0" }}>
+                        Authorize this client's Search Console data to begin pulling keyword ranks, impressions, and click history.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div>
+                    {isConnected ? (
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveConnection("GSC", gscId)}
+                          disabled={savingConn === "GSC"}
+                          style={{ flex: 1, background: "#0F4C5C", color: "white", border: "none", borderRadius: "6px", padding: "8px 14px", fontSize: "12.5px", fontWeight: "600", cursor: "pointer" }}
+                        >
+                          {savingConn === "GSC" ? "Saving..." : "Save Config"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSyncData("GSC")}
+                          disabled={syncingConn === "GSC"}
+                          style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "6px", padding: "8px 12px", cursor: "pointer" }}
+                          title="Sync Data"
+                        >
+                          <RefreshCw size={14} className={syncingConn === "GSC" ? "spin" : ""} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDisconnect("GSC")}
+                          disabled={savingConn === "GSC"}
+                          style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: "6px", padding: "8px 12px", cursor: "pointer" }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/api/auth/google?clientId=${clientId}&provider=GSC`}
+                        style={{ display: "block", textAlign: "center", background: "#0F4C5C", color: "white", textDecoration: "none", borderRadius: "6px", padding: "10px 14px", fontSize: "13px", fontWeight: "600" }}
+                      >
+                        Sign in with Google
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 2. GOOGLE ANALYTICS 4 (GA4) */}
+            {(() => {
+              const conns = data?.client?.properties?.[0]?.connections || [];
+              const conn = conns.find((c: any) => c.provider === "GA4");
+              const isConnected = !!conn;
+
+              return (
+                <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", minHeight: "360px", justifyContent: "space-between", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                  <div>
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                      <div>
+                        <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0F172A", margin: "0 0 2px 0" }}>Google Analytics 4</h3>
+                        <span style={{ fontSize: "11px", color: "#64748B", textTransform: "uppercase", fontWeight: "600" }}>GA4 Connection</span>
+                      </div>
+                      
+                      {/* Status Badge */}
+                      {isConnected ? (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          background: conn.status === "CONNECTED" ? "#F0FDF4" : "#FEF2F2",
+                          color: conn.status === "CONNECTED" ? "#166534" : "#991B1B",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "12px"
+                        }}>
+                          <CheckCircle size={10} /> Connected
+                        </span>
+                      ) : (
+                        <span style={{
+                          background: "#F1F5F9",
+                          color: "#475569",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "12px"
+                        }}>
+                          Not Configured
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Connection details */}
+                    {isConnected && (
+                      <div style={{ fontSize: "12px", color: "#64748B", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px", background: "#F8FAFC", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+                        <div><strong>Property ID:</strong> <code style={{ color: "#0F172A" }}>{conn.externalId || "Not set"}</code></div>
+                        {conn.conversionEventName && <div><strong>Conversion Name:</strong> <code style={{ color: "#0F766E" }}>{conn.conversionEventName}</code></div>}
+                        <div><strong>Sync Status:</strong> {conn.syncStatus || "PENDING"}</div>
+                        {conn.syncError && <div style={{ color: "#DC2626" }}><strong>Sync Error:</strong> {conn.syncError}</div>}
+                        {conn.lastSyncTime && <div><strong>Last Sync:</strong> {new Date(conn.lastSyncTime).toLocaleString()}</div>}
+                      </div>
+                    )}
+
+                    {/* Config inputs */}
+                    {isConnected ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Select GA4 Property ID</label>
+                          {discoveredGa4.length > 0 ? (
+                            <select
+                              value={ga4Id}
+                              onChange={(e) => setGa4Id(e.target.value)}
+                              style={{ width: "100%", padding: "8px 10px", fontSize: "13px", border: "1px solid #CBD5E1", borderRadius: "6px", background: "white" }}
+                            >
+                              {discoveredGa4.map((p) => (
+                                <option key={p.propertyId} value={p.propertyId}>{p.displayName} ({p.propertyId})</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div style={{ display: "flex", gap: "8px" }}>
+                              <input
+                                type="text"
+                                placeholder="e.g. 294029410"
+                                value={ga4Id}
+                                onChange={(e) => setGa4Id(e.target.value)}
+                                style={{ flex: 1, padding: "8px 10px", fontSize: "13px", border: "1px solid #CBD5E1", borderRadius: "6px" }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleDiscover("GA4")}
+                                disabled={discovering === "GA4"}
+                                style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", padding: "6px 12px", borderRadius: "6px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+                              >
+                                {discovering === "GA4" ? "Loading..." : "Discover"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px" }}>Custom Conversion Event (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. generate_lead or contact_form"
+                            value={ga4Event}
+                            onChange={(e) => setGa4Event(e.target.value)}
+                            style={{ width: "100%", padding: "8px 10px", fontSize: "13px", border: "1px solid #CBD5E1", borderRadius: "6px", boxSizing: "border-box" }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: "12.5px", color: "#64748B", lineHeight: "1.5", margin: "0 0 20px 0" }}>
+                        Authorize Google Analytics 4 to track total sessions, user channels, referral charts, and conversion event milestones.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div>
+                    {isConnected ? (
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveConnection("GA4", ga4Id, { conversionEventName: ga4Event })}
+                          disabled={savingConn === "GA4"}
+                          style={{ flex: 1, background: "#0F4C5C", color: "white", border: "none", borderRadius: "6px", padding: "8px 14px", fontSize: "12.5px", fontWeight: "600", cursor: "pointer" }}
+                        >
+                          {savingConn === "GA4" ? "Saving..." : "Save Config"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSyncData("GA4")}
+                          disabled={syncingConn === "GA4"}
+                          style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "6px", padding: "8px 12px", cursor: "pointer" }}
+                          title="Sync Data"
+                        >
+                          <RefreshCw size={14} className={syncingConn === "GA4" ? "spin" : ""} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDisconnect("GA4")}
+                          disabled={savingConn === "GA4"}
+                          style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: "6px", padding: "8px 12px", cursor: "pointer" }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/api/auth/google?clientId=${clientId}&provider=GA4`}
+                        style={{ display: "block", textAlign: "center", background: "#0F4C5C", color: "white", textDecoration: "none", borderRadius: "6px", padding: "10px 14px", fontSize: "13px", fontWeight: "600" }}
+                      >
+                        Sign in with Google
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 3. GOOGLE BUSINESS PROFILE (GBP) */}
+            {(() => {
+              const conns = data?.client?.properties?.[0]?.connections || [];
+              const conn = conns.find((c: any) => c.provider === "GBP");
+              const isConnected = !!conn;
+
+              return (
+                <div style={{ background: "white", border: "1px solid #E2E8F0", borderRadius: "12px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: "360px", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                  <div>
+                    {/* Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
+                      <div>
+                        <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#0F172A", margin: "0 0 2px 0" }}>Google Business Profile</h3>
+                        <span style={{ fontSize: "11px", color: "#64748B", textTransform: "uppercase", fontWeight: "600" }}>GBP Connection</span>
+                      </div>
+                      
+                      {/* Status Badge */}
+                      {isConnected ? (
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          background: conn.status === "CONNECTED" ? "#F0FDF4" : "#FEF2F2",
+                          color: conn.status === "CONNECTED" ? "#166534" : "#991B1B",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "12px"
+                        }}>
+                          <CheckCircle size={10} /> Connected
+                        </span>
+                      ) : (
+                        <span style={{
+                          background: "#F1F5F9",
+                          color: "#475569",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "12px"
+                        }}>
+                          Not Configured
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Connection details */}
+                    {isConnected && (
+                      <div style={{ fontSize: "12px", color: "#64748B", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "20px", background: "#F8FAFC", padding: "12px", borderRadius: "8px", border: "1px solid #E2E8F0" }}>
+                        <div><strong>Location ID:</strong> <code style={{ color: "#0F172A" }}>{conn.externalId || "Not set"}</code></div>
+                        <div><strong>Sync Status:</strong> {conn.syncStatus || "PENDING"}</div>
+                        {conn.syncError && <div style={{ color: "#DC2626" }}><strong>Sync Error:</strong> {conn.syncError}</div>}
+                        {conn.lastSyncTime && <div><strong>Last Sync:</strong> {new Date(conn.lastSyncTime).toLocaleString()}</div>}
+                      </div>
+                    )}
+
+                    {/* Config inputs */}
+                    {isConnected ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+                        <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569" }}>Enter GBP Location ID</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. locations/123456789"
+                          value={gbpId}
+                          onChange={(e) => setGbpId(e.target.value)}
+                          style={{ width: "100%", padding: "8px 10px", fontSize: "13px", border: "1px solid #CBD5E1", borderRadius: "6px", boxSizing: "border-box" }}
+                        />
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: "12.5px", color: "#64748B", lineHeight: "1.5", margin: "0 0 20px 0" }}>
+                        Link this client's GBP Location ID to pull maps impressions, phone clicks, and directions history onto the scorecard.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div>
+                    {isConnected ? (
+                      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveConnection("GBP", gbpId)}
+                          disabled={savingConn === "GBP"}
+                          style={{ flex: 1, background: "#0F4C5C", color: "white", border: "none", borderRadius: "6px", padding: "8px 14px", fontSize: "12.5px", fontWeight: "600", cursor: "pointer" }}
+                        >
+                          {savingConn === "GBP" ? "Saving..." : "Save Config"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSyncData("GBP")}
+                          disabled={syncingConn === "GBP"}
+                          style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: "6px", padding: "8px 12px", cursor: "pointer" }}
+                          title="Sync Data"
+                        >
+                          <RefreshCw size={14} className={syncingConn === "GBP" ? "spin" : ""} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDisconnect("GBP")}
+                          disabled={savingConn === "GBP"}
+                          style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: "6px", padding: "8px 12px", cursor: "pointer" }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <Link
+                        href={`/api/auth/google?clientId=${clientId}&provider=GBP`}
+                        style={{ display: "block", textAlign: "center", background: "#0F4C5C", color: "white", textDecoration: "none", borderRadius: "6px", padding: "10px 14px", fontSize: "13px", fontWeight: "600" }}
+                      >
+                        Sign in with Google
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
         </div>
       )}

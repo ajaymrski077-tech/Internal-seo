@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
       const primaryProperty = client.properties?.[0];
       const keywords = primaryProperty?.trackedKeywords || [];
-      const totalKeywords = keywords.length > 0 ? keywords.length : 15;
+      const totalKeywords = keywords.length;
 
       let top3 = 0;
       let top10 = 0;
@@ -57,12 +57,14 @@ export async function GET(req: NextRequest) {
         const latest = snaps[snaps.length - 1];
         const prev = snaps[snaps.length - 2];
 
-        const pos = latest?.position || 18;
-        posSum += pos;
-        posCount++;
+        if (latest?.position) {
+          const pos = latest.position;
+          posSum += pos;
+          posCount++;
 
-        if (pos <= 3) top3++;
-        if (pos <= 10) top10++;
+          if (pos <= 3) top3++;
+          if (pos <= 10) top10++;
+        }
 
         if (prev && latest) {
           if (latest.position && prev.position) {
@@ -72,22 +74,17 @@ export async function GET(req: NextRequest) {
         }
       });
 
-      const avgPosition = posCount > 0 ? Math.round(posSum / posCount) : (isInternal ? 35 : 21);
-      const avgPositionDelta = upYesterday > downYesterday ? upYesterday - downYesterday : -(downYesterday - upYesterday || 1);
+      const avgPosition = posCount > 0 ? Math.round(posSum / posCount) : null;
+      const avgPositionDelta = upYesterday > downYesterday ? upYesterday - downYesterday : -(downYesterday - upYesterday);
 
       // Generate 14-day sparkline from property snapshots or calculated
       const propSnaps = primaryProperty?.snapshots || [];
       let sparkline: number[] = [];
       if (propSnaps.length >= 7) {
-        sparkline = propSnaps.slice().reverse().map(s => s.gscPosition || avgPosition);
+        sparkline = propSnaps.slice().reverse().map(s => s.gscPosition || avgPosition || 0);
       } else {
-        // Deterministic realistic sparkline based on avgPosition
-        sparkline = [
-          avgPosition + 2, avgPosition + 1, avgPosition + 2, avgPosition,
-          avgPosition - 1, avgPosition, avgPosition - 1, avgPosition - 2,
-          avgPosition - 1, avgPosition, avgPosition + 1, avgPosition,
-          avgPosition - 1, avgPosition
-        ];
+        // Enforce zero mock sparkline
+        sparkline = [];
       }
 
       const item = {
@@ -97,15 +94,15 @@ export async function GET(req: NextRequest) {
         domain: primaryProperty?.domain || `https://${client.name.toLowerCase().replace(/\s+/g, "")}.com`,
         keywords: totalKeywords,
         avgPosition,
-        avgPositionDelta,
-        top3: top3 > 0 ? top3 : (totalKeywords > 50 ? 5 : 1),
-        top10: top10 > 0 ? top10 : (totalKeywords > 50 ? 18 : 3),
+        avgPositionDelta: avgPositionDelta || 0,
+        top3,
+        top10,
         vsYesterday: {
-          up: upYesterday || Math.floor(totalKeywords * 0.15) || 3,
-          down: downYesterday || Math.floor(totalKeywords * 0.1) || 2
+          up: upYesterday,
+          down: downYesterday
         },
         sparkline,
-        lastSynced: "2026-08-27 07:00:00"
+        lastSynced: null
       };
 
       if (isInternal) {

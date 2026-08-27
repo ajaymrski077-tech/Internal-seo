@@ -66,16 +66,37 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ clie
     }
 
     const primaryProperty = client.properties?.[0];
-    const auditScore = Math.round(primaryProperty?.seoAudits?.[0]?.score || 75);
+    const latestAudit = primaryProperty?.seoAudits?.[0];
+    const auditScore = Math.round(latestAudit?.score || 75);
 
-    const defaultPages = [
-      { page: "/services/leak-detection/", keywords: 1, avgPos: 11, delta: 8, top10: 0, onPageScore: null, linksBuilt: 0, flag: "close, no links", isKeyPage: false },
-      { page: "/services/rope-access/", keywords: 1, avgPos: 17, delta: 0, top10: 0, onPageScore: null, linksBuilt: 0, flag: "close, no links", isKeyPage: false },
-      { page: "/", keywords: 18, avgPos: 22, delta: 1, top10: 1, onPageScore: auditScore, linksBuilt: 20, flag: null, isKeyPage: true },
-      { page: "/services/chimney-repair/", keywords: 1, avgPos: 28, delta: -4, top10: 0, onPageScore: null, linksBuilt: 0, flag: null, isKeyPage: false },
-      { page: "/services/flat-roofing/", keywords: 1, avgPos: null, delta: 0, top10: 0, onPageScore: null, linksBuilt: 0, flag: null, isKeyPage: false },
-      { page: "(none)", keywords: 2, avgPos: null, delta: 0, top10: 0, onPageScore: null, linksBuilt: 0, flag: null, isKeyPage: false },
-    ];
+    let pages: any[] = [];
+    if (latestAudit) {
+      const seoPages = await prisma.seoPage.findMany({
+        where: { auditId: latestAudit.id }
+      });
+      pages = seoPages.map(sp => {
+        // Compute path from URL (e.g. https://domain.com/path -> /path)
+        let path = sp.url;
+        try {
+          const urlObj = new URL(sp.url);
+          path = urlObj.pathname;
+        } catch {
+          // Fallback to url if invalid URL
+        }
+        return {
+          id: sp.id,
+          page: path,
+          keywords: 0,
+          avgPos: null,
+          delta: 0,
+          top10: 0,
+          onPageScore: auditScore,
+          linksBuilt: 0,
+          flag: null,
+          isKeyPage: false
+        };
+      });
+    }
 
     return NextResponse.json({
       client: {
@@ -83,7 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ clie
         name: client.name,
         domain: primaryProperty?.domain || `https://${client.name.toLowerCase().replace(/\s+/g, "")}.com`,
       },
-      pages: defaultPages
+      pages
     });
   } catch (error: unknown) {
     console.error("Client Pages Overview Error:", error);
