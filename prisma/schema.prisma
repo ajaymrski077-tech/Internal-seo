@@ -512,18 +512,32 @@ model GbpPerformanceSnapshot {
 
 model ContentItem {
   id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String?         @db.ObjectId
   propertyId    String          @db.ObjectId
   property      WebsiteProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   title         String
   targetKeyword String
   searchIntent  String?
-  contentType   String?         // Blog, Landing Page, Guide, etc.
+  contentType   String?         // Blog post, Comparison, FAQ, Location page, Service page
   priority      String          @default("MEDIUM") // LOW, MEDIUM, HIGH
-  source        String          @default("MANUAL") // GSC, RANKINGS, ONPAGE, MANUAL
-  status        String          @default("IDEA") // IDEA, RESEARCH, BRIEF, PLANNED, DRAFTING, IN_REVIEW, APPROVED, SCHEDULED, PUBLISHED
+  source        String          @default("MANUAL") // GSC, RANKINGS, ONPAGE, MANUAL, AI, GAP
+  status        String          @default("IDEA") // proposed, approved, briefed, drafted, published, rejected
+  stage         String          @default("planned") // planned, brief, drafted, editing, review, publish, published
+  cluster       String?
+  tier          String?         @default("commodity") // commodity, enhanced, story
+  volume        Int?            @default(0)
+  score         Int?            @default(0)
+  assignedTo    String?
+  scheduledDate DateTime?
+  dueDate       DateTime?
+  wordCount     Int?            @default(0)
+  isServicePage Boolean?        @default(false)
+  isLocal       Boolean?        @default(false)
+  templateId    String?
   publishDate   DateTime?
   liveUrl       String?
   pubNotes      String?
+  notes         String?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   brief         ContentBrief?
@@ -557,3 +571,40 @@ model ContentDraft {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
+
+model PageTemplate {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId      String   @db.ObjectId
+  name          String
+  source        String   @default("IMAGE") // IMAGE, URL, MANUAL
+  sectionsCount Int      @default(10)
+  wordCount     Int      @default(1200)
+  usedByCount   Int      @default(0)
+  structureJson String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ContentEntity {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId    String   @db.ObjectId
+  name        String
+  category    String?
+  notes       String?
+  isBlocklist Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ContentSettings {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  clientId         String    @unique @db.ObjectId
+  sitemapUrl       String?
+  serpLocationCode String    @default("2826")
+  isV2Enabled      Boolean   @default(true)
+  lastSitemapCrawl DateTime?
+  lastGscRefresh   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
