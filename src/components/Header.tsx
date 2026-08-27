@@ -72,7 +72,15 @@ export default function Header() {
     { name: "Dashboard", href: "/admin" },
     { name: "Clients", href: "/admin/clients" },
     { name: "Reports", href: "/admin/reports" },
-    { name: "Content", href: "/admin/content" },
+  ];
+
+  const contentLinks = [
+    { name: "Content Hub", href: "/admin/content", icon: "🌐" },
+    { name: "Ideas", href: "/admin/content/ideas", icon: "💡" },
+    { name: "Drafts", href: "/admin/content/drafts", icon: "✏️" },
+    { name: "Editing queue", href: "/admin/content/editing-queue", icon: "📋" },
+    { name: "Content Library", href: "/admin/content/library", icon: "📑" },
+    { name: "Content Gap Analysis", href: "/admin/content/gap-analysis", icon: "⚡" },
   ];
 
   const otherLinks = [
@@ -142,6 +150,29 @@ export default function Header() {
             );
           })}
 
+          {/* Content Dropdown */}
+          <div className={styles.dropdown}>
+            <Link
+              href="/admin/content"
+              className={`${styles.navLink} ${styles.dropdownTrigger} ${pathname.startsWith("/admin/content") ? styles.active : ""}`}
+              style={{ display: "flex", alignItems: "center", textDecoration: "none" }}
+            >
+              Content <ChevronDown size={14} style={{ marginLeft: "4px" }} />
+            </Link>
+            <div className={styles.dropdownMenu}>
+              {contentLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={styles.dropdownItem}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
+                >
+                  <span style={{ fontSize: "0.9rem" }}>{link.icon}</span>
+                  {link.name}
+                </Link>
+              ))}
+            </div>
+          </div>
 
           <div className={styles.dropdown}>
             <button className={`${styles.navLink} ${styles.dropdownTrigger}`} style={{ background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center" }}>

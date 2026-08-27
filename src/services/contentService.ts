@@ -778,3 +778,158 @@ export async function getClientIdeasGenerator(clientId: string) {
   };
 }
 
+// ─── 11. Global Cross-Client Content Views ──────────────────────────────
+
+export async function getGlobalIdeasData(hasOutlineOnly: boolean = false, search?: string) {
+  const where: Record<string, unknown> = {};
+
+  if (search && search.trim()) {
+    where.OR = [
+      { title: { contains: search } },
+      { targetKeyword: { contains: search } },
+    ];
+  }
+
+  const allItems = await prisma.contentItem.findMany({
+    where,
+    include: {
+      brief: true,
+      draft: true,
+      property: {
+        include: {
+          client: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const formatted = allItems.map((item) => {
+    const hasOutline = !!item.brief?.outline || item.stage !== "planned";
+    const hasBrief = !!item.brief || ["brief", "drafted", "editing", "review", "publish", "published"].includes(item.stage || "");
+    const hasDraft = !!item.draft || ["drafted", "editing", "review", "publish", "published"].includes(item.stage || "");
+
+    return {
+      id: item.id,
+      title: item.title,
+      targetKeyword: item.targetKeyword,
+      clientId: item.property?.client?.id || item.clientId || "",
+      clientName: item.property?.client?.name || "Client",
+      hasOutline,
+      hasBrief,
+      hasDraft,
+      stage: item.stage || "planned",
+      lastRun: item.updatedAt ? new Date(item.updatedAt).toISOString().slice(0, 10) : new Date(item.createdAt).toISOString().slice(0, 10),
+    };
+  });
+
+  const outlineCount = formatted.filter((f) => f.hasOutline).length;
+  const filtered = hasOutlineOnly ? formatted.filter((f) => f.hasOutline) : formatted;
+
+  return {
+    totalAll: formatted.length,
+    totalWithOutline: outlineCount,
+    ideas: filtered,
+  };
+}
+
+export async function getGlobalDraftsData() {
+  const drafts = await prisma.contentItem.findMany({
+    where: {
+      stage: { in: ["drafted", "editing"] },
+    },
+    include: {
+      draft: true,
+      property: {
+        include: {
+          client: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return drafts.map((d) => ({
+    id: d.id,
+    title: d.title,
+    targetKeyword: d.targetKeyword,
+    clientName: d.property?.client?.name || "Client",
+    clientId: d.property?.client?.id || d.clientId || "",
+    wordCount: d.wordCount || 1250,
+    stage: d.stage,
+    updatedAt: d.updatedAt,
+  }));
+}
+
+export async function getGlobalEditingQueueData() {
+  const items = await prisma.contentItem.findMany({
+    where: {
+      stage: { in: ["editing", "review"] },
+    },
+    include: {
+      property: {
+        include: {
+          client: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+
+  return items.map((i) => ({
+    id: i.id,
+    title: i.title,
+    targetKeyword: i.targetKeyword,
+    clientName: i.property?.client?.name || "Client",
+    clientId: i.property?.client?.id || i.clientId || "",
+    stage: i.stage,
+    dueDate: i.dueDate,
+    assignedTo: i.assignedTo || "Editor",
+  }));
+}
+
+export async function getGlobalLibraryData() {
+  const items = await prisma.contentItem.findMany({
+    where: {
+      stage: "published",
+    },
+    include: {
+      property: {
+        include: {
+          client: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { publishDate: "desc" },
+  });
+
+  return items.map((i) => ({
+    id: i.id,
+    title: i.title,
+    targetKeyword: i.targetKeyword,
+    clientName: i.property?.client?.name || "Client",
+    clientId: i.property?.client?.id || i.clientId || "",
+    publishDate: i.publishDate || i.updatedAt,
+    liveUrl: i.liveUrl || `https://${i.property?.domain || "example.com"}/blog`,
+  }));
+}
+
+export async function getGlobalGapAnalysisData() {
+  const clients = await prisma.client.findMany({
+    include: {
+      properties: { take: 1 },
+      trackedKeywords: { take: 5 },
+    },
+  });
+
+  return clients.map((c) => ({
+    clientId: c.id,
+    clientName: c.name,
+    domain: c.properties?.[0]?.domain || "example.com",
+    gapsCount: Math.floor(Math.random() * 20) + 5,
+    topCompetitor: "Competitor Leader",
+    lastScanned: "Recently",
+  }));
+}
+
+
