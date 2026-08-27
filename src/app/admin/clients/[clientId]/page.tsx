@@ -1,40 +1,19 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ExternalLink,
-  Copy,
-  RefreshCw,
-  Check,
-  AlertTriangle,
-  AlertCircle,
   Settings,
-  Calendar,
-  User,
-  Globe,
-  Database,
-  Shield,
-  Activity,
-  CheckCircle2,
-  MoreVertical,
-  Archive,
-  RotateCcw,
-  Edit2,
-  Trash2,
+  AlertCircle,
   TrendingUp,
-  TrendingDown,
-  FileText,
-  Link as LinkIcon,
-  ChevronDown,
-  Link2
+  TrendingDown
 } from "lucide-react";
 import styles from "@/styles/ClientWorkspace.module.css";
 import { useToast } from "@/components/ToastContext";
 import { useConfirm } from "@/components/ConfirmContext";
-import { handleApiError } from "@/lib/apiUtils";
 import ClientModal from "@/components/ClientModal";
 
 // Local Interfaces
@@ -71,23 +50,13 @@ interface ClientDetail {
   properties: PropertyDetail[];
 }
 
-interface ActivityLog {
-  id: string | number;
-  actorEmail: string;
-  action: string;
-  clientId: string | number | null;
-  clientName: string | null;
-  metadata: string | null;
-  createdAt: string;
-}
-
 interface DeliveryDetail {
   id: string | number;
   clientId: string | number;
   clientName: string;
   propertyId: string | number | null;
   propertyDomain: string | null;
-  type: string;
+  type: string; // BACKLINK, CONTENT
   date: string;
   description: string;
   contentDetails?: {
@@ -122,111 +91,49 @@ interface WorkspacePayload {
     organicTrafficChange: number;
     conversionsChange: number;
   } | null;
+  totalUsers?: number;
+  totalUsersChange?: number;
+  channels?: {
+    organicSearch: number;
+    direct: number;
+    referral: number;
+    paidSearch: number;
+    social: number;
+    email: number;
+    other: number;
+  };
+  aiReferralTraffic?: {
+    totalSessions: number;
+    sources: Array<{ name: string; sessions: number; percentage: number }>;
+  };
   history: {
     current: Array<{ date: string; sessions: number; organicTraffic: number; conversions: number }>;
     previous: Array<{ date: string; sessions: number; organicTraffic: number; conversions: number }>;
   };
   deliveries: DeliveryDetail[];
-  activityLogs: ActivityLog[];
-  prStats?: {
-    activeCampaigns: number;
-    totalOutreach: number;
-    publishedPlacements: number;
-    responseRate: number;
-  };
-  linkStats?: {
-    activeCampaigns: number;
-    qualifiedOpportunities: number;
-    acquiredLinks: number;
-    liveLinks: number;
-    attentionLinks: number;
-  };
-  rankingStats?: {
-    trackedKeywords: number;
-    averagePosition: number;
-    top3Count: number;
-    top10Count: number;
-    improvedKeywords: number;
-    declinedKeywords: number;
-  };
-  onpageStats?: {
-    id: string | number;
-    score: number | null;
-    status: string;
-    pagesCrawled: number;
-    issuesCritical: number;
-    createdAt: string;
-  } | null;
-  gbpStats?: {
-    id: string | number;
-    displayName: string;
-    primaryCategory: string | null;
-    syncStatus: string;
-    lastSyncTime: string | null;
-    latestMetrics: {
-      viewsSearch: number;
-      viewsMaps: number;
-      clicksWebsite: number;
-      clicksCall: number;
-      clicksDirections: number;
-    } | null;
-  } | null;
 }
 
-export default function ClientWorkspacePage({ params }: { params: Promise<{ clientId: string }> }) {
+export default function ClientWorkspacePage() {
   const router = useRouter();
-  const { clientId: clientIdStr } = use(params);
-  const clientId = clientIdStr;
+  const rawParams = useParams();
+  const clientId = (rawParams?.clientId as string) || "";
 
-  // Layout Tab State
-  const [activeTab, setActiveTab] = useState("overview"); // overview, analytics, integrations, activity, settings
-  const [range, setRange] = useState("30d");
+  // Range and Tab States
+  const [range, setRange] = useState("30d"); // 7d, 30d, 60d, 90d
+  const [activeTab, setActiveTab] = useState<"overview" | "channels">("overview");
 
   // Core Data States
   const [data, setData] = useState<WorkspacePayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Action / Form States
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
-  const [showMoreActions, setShowMoreActions] = useState(false);
+  // Modals & Popups
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
-  const [overviewEvents, setOverviewEvents] = useState<DeliveryDetail[]>([]);
+  const [hoveredHistoryIndex, setHoveredHistoryIndex] = useState<number | null>(null);
+  const [hoveredDonutKey, setHoveredDonutKey] = useState<string | null>(null);
 
   const { toast, success, error: toastError } = useToast();
   const { confirm } = useConfirm();
-
-  // Integrations Form values
-  const [ga4PropId, setGa4PropId] = useState("");
-  const [ga4EventName, setGa4EventName] = useState("");
-  const [gscDomainUrl, setGscDomainUrl] = useState("");
-  const [isConnectingGA4, setIsConnectingGA4] = useState(false);
-  const [isConnectingGSC, setIsConnectingGSC] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  // Discovered Resources states
-  const [discoveredGa4Properties, setDiscoveredGa4Properties] = useState<Array<{ propertyId: string; displayName: string; accountName: string }>>([]);
-  const [discoveredGscSites, setDiscoveredGscSites] = useState<Array<{ siteUrl: string; permissionLevel: string }>>([]);
-  const [discoveredGbpLocations, setDiscoveredGbpLocations] = useState<Array<{ name: string; title: string; primaryCategory?: string; address?: string; phone?: string; websiteUri?: string; accountName?: string }>>([]);
-  const [loadingGa4Props, setLoadingGa4Props] = useState(false);
-  const [loadingGscSites, setLoadingGscSites] = useState(false);
-  const [loadingGbpLocations, setLoadingGbpLocations] = useState(false);
-  const [ga4DiscError, setGa4DiscError] = useState("");
-  const [gscDiscError, setGscDiscError] = useState("");
-  const [gbpDiscError, setGbpDiscError] = useState("");
-  const [isConnectingGbp, setIsConnectingGbp] = useState(false);
-  const [selectedGbpLocationName, setSelectedGbpLocationName] = useState("");
-
-  // Settings tab inline status inputs
-  const [settingsManager, setSettingsManager] = useState("");
-  const [settingsNotes, setSettingsNotes] = useState("");
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  // Analytics Tab Chart States
-  const [activeMetric, setActiveMetric] = useState<"sessions" | "organicTraffic" | "conversions">("sessions");
-  const [chartGroup, setChartGroup] = useState<"day" | "week">("day");
 
   // Fetch unified workspace data
   const fetchWorkspace = useCallback(async () => {
@@ -243,17 +150,6 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
       }
       const payload: WorkspacePayload = await res.json();
       setData(payload);
-
-      // Initialize form fields from loaded values
-      const ga4Conn = payload.client.properties[0]?.connections.find(c => c.provider === "GA4");
-      const gscConn = payload.client.properties[0]?.connections.find(c => c.provider === "GSC");
-
-      setGa4PropId(ga4Conn?.externalId || "");
-      setGa4EventName(ga4Conn?.conversionEventName || "");
-      setGscDomainUrl(gscConn?.externalId || payload.domain);
-
-      setSettingsManager(payload.client.managerName || "");
-      setSettingsNotes(payload.client.notes || "");
     } catch (err: unknown) {
       const errObj = err as Error;
       console.error(err);
@@ -267,95 +163,20 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
     fetchWorkspace();
   }, [fetchWorkspace]);
 
-  // Fetch discovered properties/sites after OAuth connections exist
-  const fetchDiscoveredResources = useCallback(async () => {
-    if (!clientId || !data) return;
+  // Merge daily deliveries into history points
+  const historyWithDeliveries = useMemo(() => {
+    if (!data?.history?.current) return [];
+    const deliveries = data.deliveries || [];
 
-    const ga4Conn = data.client.properties[0]?.connections.find(c => c.provider === "GA4");
-    const gscConn = data.client.properties[0]?.connections.find(c => c.provider === "GSC");
-    const gbpConn = data.client.properties[0]?.connections.find(c => c.provider === "GBP");
-
-    // Fetch GA4 properties
-    if (ga4Conn && (ga4Conn.status === "CONNECTED" || ga4Conn.status === "SYNC_ERROR")) {
-      setLoadingGa4Props(true);
-      setGa4DiscError("");
-      try {
-        const res = await fetch(`/api/clients/${clientId}/connections/discover-ga4`);
-        const resData = await res.json();
-        if (resData.error) {
-          setGa4DiscError(resData.error);
-        } else {
-          setDiscoveredGa4Properties(resData.properties || []);
-        }
-      } catch (err: unknown) {
-      const errObj = err as Error;
-        setGa4DiscError("Failed to discover GA4 properties");
-      } finally {
-        setLoadingGa4Props(false);
-      }
-    } else {
-      setDiscoveredGa4Properties([]);
-    }
-
-    // Fetch GSC sites
-    if (gscConn && (gscConn.status === "CONNECTED" || gscConn.status === "SYNC_ERROR")) {
-      setLoadingGscSites(true);
-      setGscDiscError("");
-      try {
-        const res = await fetch(`/api/clients/${clientId}/connections/discover-gsc`);
-        const resData = await res.json();
-        if (resData.error) {
-          setGscDiscError(resData.error);
-        } else {
-          setDiscoveredGscSites(resData.sites || []);
-        }
-      } catch (err: unknown) {
-      const errObj = err as Error;
-        setGscDiscError("Failed to discover GSC properties");
-      } finally {
-        setLoadingGscSites(false);
-      }
-    } else {
-      setDiscoveredGscSites([]);
-    }
-
-    // Fetch GBP locations
-    if (gbpConn && (gbpConn.status === "CONNECTED" || gbpConn.status === "SYNC_ERROR")) {
-      setLoadingGbpLocations(true);
-      setGbpDiscError("");
-      try {
-        const res = await fetch(`/api/clients/${clientId}/connections/discover-gbp`);
-        const resData = await res.json();
-        if (resData.error) {
-          setGbpDiscError(resData.error);
-        } else {
-          setDiscoveredGbpLocations(resData.locations || []);
-        }
-      } catch (err: unknown) {
-      const errObj = err as Error;
-        setGbpDiscError("Failed to discover GMB locations");
-      } finally {
-        setLoadingGbpLocations(false);
-      }
-    } else {
-      setDiscoveredGbpLocations([]);
-    }
-  }, [clientId, data]);
-
-  useEffect(() => {
-    if (activeTab === "integrations" && data) {
-      fetchDiscoveredResources();
-    }
-  }, [activeTab, data, fetchDiscoveredResources]);
-
-  // Document listener to close actions popup
-  useEffect(() => {
-    const handleOutsideClick = () => {
-      setShowMoreActions(false);
-    };
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, []);
+    return data.history.current.map((h) => {
+      const hDate = h.date.split("T")[0];
+      const matchedDeliveries = deliveries.filter((d) => d.date.split("T")[0] === hDate);
+      return {
+        ...h,
+        deliveries: matchedDeliveries
+      };
+    });
+  }, [data?.history?.current, data?.deliveries]);
 
   if (loading && !data) {
     return (
@@ -381,377 +202,14 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
     );
   }
 
-  const { client, domain, initials, ga4Status, gscStatus, gbpStatus, ga4Error, gscError, gbpError, lastSyncTime, metrics, history, deliveries, activityLogs, prStats, linkStats, rankingStats, onpageStats, gbpStats } = data;
+  const { client, domain, metrics, totalUsers, totalUsersChange, channels, aiReferralTraffic, deliveries } = data;
 
-  // Clipboard copy handler for secure share links
-  const handleCopyLink = async () => {
-    if (!client.shareToken) return;
-    const origin = window.location.origin;
-    const shareUrl = `${origin}/share/${client.shareToken}`;
-
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-      success("Share link copied to clipboard.");
-    } catch {
-      toastError("Failed to copy share link.");
-    }
-  };
-
-  // Regenerate Share Link token handler
-  const handleRegenerateToken = async () => {
-    const isConfirmed = await confirm({
-      title: "Regenerate Share Link",
-      message: "Are you sure you want to regenerate the share token? The existing link will stop working immediately.",
-      confirmText: "Regenerate",
-      destructive: true
-    });
-    if (!isConfirmed) return;
-
-    setIsRegenerating(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/share-token`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to regenerate token.");
-      success("Share link regenerated successfully.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to regenerate share token." });
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
-
-  // Archive Client handler
-  const handleArchiveClient = async () => {
-    const isConfirmed = await confirm({
-      title: "Archive Client",
-      message: `Are you sure you want to archive ${client.name}?`,
-      confirmText: "Archive",
-      destructive: true
-    });
-    if (!isConfirmed) return;
-
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isArchived: true })
-      });
-      if (!res.ok) throw new Error("Failed to archive client.");
-      success("Client archived successfully.");
-      router.push("/admin/clients");
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to archive client." });
-    }
-  };
-
-  // Restore Client handler
-  const handleRestoreClient = async () => {
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isArchived: false, status: "ACTIVE" })
-      });
-      if (!res.ok) throw new Error("Failed to restore client.");
-      success("Client restored successfully.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to restore client." });
-    }
-  };
-
-  // Manual sync trigger action
-  const handleManualSync = async () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/sync`, {
-        method: "POST",
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || "Failed to trigger manual sync");
-      }
-      success(resData.message || "Manual sync completed successfully.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to sync data." });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Connect GA4 Connection Action - redirects to OAuth without ID
-  const handleConnectGA4OAuth = () => {
-    setIsConnectingGA4(true);
-    try {
-      window.location.href = `/api/auth/google?clientId=${clientId}&provider=GA4`;
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to start Google Analytics auth flow." });
-      setIsConnectingGA4(false);
-    }
-  };
-
-  // Save selected/entered GA4 property configuration
-  const handleSaveGA4Property = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ga4PropId.trim()) {
-      toastError("Property ID is required to set up GA4 connection.");
-      return;
-    }
-    setIsConnectingGA4(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/connections`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: "GA4",
-          externalId: ga4PropId.trim(),
-          conversionEventName: ga4EventName.trim() || undefined,
-        })
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || "Failed to save GA4 configuration.");
-      }
-      success("GA4 configuration saved successfully and initial sync complete.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to configure Google Analytics." });
-    } finally {
-      setIsConnectingGA4(false);
-    }
-  };
-
-  // Disconnect GA4 Connection Action
-  const handleDisconnectGA4 = async () => {
-    const isConfirmed = await confirm({
-      title: "Disconnect GA4",
-      message: "Are you sure you want to disconnect Google Analytics 4? This will disable GA4 metrics sync.",
-      confirmText: "Disconnect",
-      destructive: true
-    });
-    if (!isConfirmed) return;
-
-    setIsConnectingGA4(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/connections?provider=GA4`, {
-        method: "DELETE"
-      });
-      if (!res.ok) throw new Error("Failed to disconnect.");
-      success("GA4 disconnected successfully.");
-      setGa4PropId("");
-      setGa4EventName("");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to disconnect GA4." });
-    } finally {
-      setIsConnectingGA4(false);
-    }
-  };
-
-  // Connect GSC Connection Action - redirects to OAuth without ID
-  const handleConnectGSCOAuth = () => {
-    setIsConnectingGSC(true);
-    try {
-      window.location.href = `/api/auth/google?clientId=${clientId}&provider=GSC`;
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to start Google Search Console auth flow." });
-      setIsConnectingGSC(false);
-    }
-  };
-
-  // Save selected/entered GSC site configuration
-  const handleSaveGSCSite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!gscDomainUrl.trim()) {
-      toastError("GSC Property / Domain URL is required.");
-      return;
-    }
-    setIsConnectingGSC(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/connections`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: "GSC",
-          externalId: gscDomainUrl.trim(),
-        })
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || "Failed to save GSC configuration.");
-      }
-      success("GSC configuration saved successfully and initial sync complete.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to configure Google Search Console." });
-    } finally {
-      setIsConnectingGSC(false);
-    }
-  };
-
-  // Disconnect GSC Connection Action
-  const handleDisconnectGSC = async () => {
-    const isConfirmed = await confirm({
-      title: "Disconnect GSC",
-      message: "Are you sure you want to disconnect Google Search Console?",
-      confirmText: "Disconnect",
-      destructive: true
-    });
-    if (!isConfirmed) return;
-
-    setIsConnectingGSC(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/connections?provider=GSC`, {
-        method: "DELETE"
-      });
-      if (!res.ok) throw new Error("Failed to disconnect.");
-      success("GSC disconnected successfully.");
-      setGscDomainUrl(domain);
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to disconnect GSC." });
-    } finally {
-      setIsConnectingGSC(false);
-    }
-  };
-
-  // Connect GBP Action - redirects to OAuth
-  const handleConnectGBPOAuth = () => {
-    setIsConnectingGbp(true);
-    try {
-      window.location.href = `/api/auth/google?clientId=${clientId}&provider=GBP`;
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to start Google Business Profile auth flow." });
-      setIsConnectingGbp(false);
-    }
-  };
-
-  // Save selected GBP mapping
-  const handleSaveGBPLocation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedGbpLocationName) {
-      toastError("Storefront selection is required.");
-      return;
-    }
-    const selected = discoveredGbpLocations.find(l => l.name === selectedGbpLocationName);
-    if (!selected) return;
-
-    setIsConnectingGbp(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}/connections/connect-gbp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          locationName: selected.name,
-          accountName: selected.accountName,
-          displayName: selected.title,
-          primaryCategory: selected.primaryCategory,
-          address: selected.address,
-          phone: selected.phone,
-          websiteUri: selected.websiteUri
-        })
-      });
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(resData.error || "Failed to save GBP mapping.");
-      }
-      success("GBP listing mapped successfully. Sync is running in background.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to connect GBP storefront." });
-    } finally {
-      setIsConnectingGbp(false);
-    }
-  };
-
-  // Disconnect GBP listing
-  const handleDisconnectGBP = async () => {
-    if (!gbpStats?.id) return;
-    const isConfirmed = await confirm({
-      title: "Disconnect GBP Location",
-      message: "Are you sure you want to disconnect Google Business Profile? All local SEO performance history will be deleted.",
-      confirmText: "Disconnect",
-      destructive: true
-    });
-    if (!isConfirmed) return;
-
-    setIsConnectingGbp(true);
-    try {
-      const res = await fetch(`/api/gbp/locations/${gbpStats.id}/disconnect`, {
-        method: "POST"
-      });
-      if (!res.ok) throw new Error("Failed to disconnect.");
-      success("GBP location disconnected successfully.");
-      setSelectedGbpLocationName("");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to disconnect GBP." });
-    } finally {
-      setIsConnectingGbp(false);
-    }
-  };
-
-  // Save general settings updates (inline)
-  const handleSaveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSavingSettings(true);
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          managerName: settingsManager.trim() || null,
-          notes: settingsNotes.trim() || null
-        })
-      });
-      if (!res.ok) throw new Error("Failed to update settings.");
-      success("Settings saved successfully.");
-      await fetchWorkspace();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error: toastError }, fallbackMessage: "Failed to save settings." });
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
-  // Activity Log mapper formatting helper
-  const getActivityLogMeta = (action: string, metaStr: string | null) => {
-    const meta = metaStr ? JSON.parse(metaStr) : {};
-    switch (action) {
-      case "CLIENT_CREATED":
-        return { label: "Client account created", dotClass: styles.create, desc: meta.companyName ? `Registered under ${meta.companyName}` : "New profile setup" };
-      case "WEBSITE_CHANGED":
-        return { label: "Website domain updated", dotClass: styles.update, desc: `Domain mapped to: ${meta.domain || meta.newDomain || ""}` };
-      case "INTEGRATION_CONNECTED":
-        return { label: `${meta.provider} connected`, dotClass: styles.connectedDot, desc: `Verification ID: ${meta.externalId || "N/A"}` };
-      case "INTEGRATION_DISCONNECTED":
-        return { label: `${meta.provider} disconnected`, dotClass: styles.archiveDot, desc: "Access revoked by admin" };
-      case "SHARE_LINK_REGENERATED":
-        return { label: "Share link regenerated", dotClass: styles.update, desc: "Generated new UUID secure token" };
-      case "CLIENT_UPDATED":
-        return { label: "Client details updated", dotClass: styles.update, desc: `Changed: ${meta.changes ? meta.changes.join(", ") : "account settings"}` };
-      case "CLIENT_ARCHIVED":
-        return { label: "Client archived", dotClass: styles.archiveDot, desc: "Soft-deleted and removed from portfolios" };
-      case "CLIENT_RESTORED":
-        return { label: "Client restored", dotClass: styles.connectedDot, desc: "Restored to active lists" };
-      default:
-        return { label: action.replace(/_/g, " ").toLowerCase(), dotClass: styles.update, desc: "Administrative update completed" };
-    }
-  };
-
-  // Hover tracking for interactive SVG chart
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
-  // SVG Trend Line Chart Coordinates mapper (Multi-tab reusable)
-  const renderSVGChart = (metricKey: "sessions" | "organicTraffic" | "conversions") => {
-    const currentHist = history?.current || [];
-    const prevHist = history?.previous || [];
-
-    if (currentHist.length < 2) {
+  // -------------------------------------------------------------
+  // RENDER DUAL-LINE SPLINE CHART (Traffic Over Time)
+  // -------------------------------------------------------------
+  const renderTrafficOverTimeChart = () => {
+    const hist = historyWithDeliveries;
+    if (hist.length < 2) {
       return (
         <div className={styles.noChartData}>
           Insufficient data points to plot timeline trend.
@@ -759,20 +217,21 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
       );
     }
 
-    const currentValues = currentHist.map(h => h[metricKey] || 0);
-    const prevValues = prevHist.map(h => h[metricKey] || 0);
-    const rawMax = Math.max(...currentValues, ...prevValues, 0);
+    const totalSessionsVals = hist.map((h) => h.sessions || 0);
+    const organicSessionsVals = hist.map((h) => h.organicTraffic || 0);
+    const rawMax = Math.max(...totalSessionsVals, ...organicSessionsVals, 0);
     const maxVal = rawMax > 0 ? Math.ceil(rawMax * 1.25) : 10;
     const minVal = 0;
-    const paddingLeft = 50;
-    const paddingRight = 20;
-    const paddingTop = 25;
-    const paddingBottom = 35;
-    const chartHeight = 240;
+
     const width = 1000;
+    const chartHeight = 280;
+    const paddingLeft = 45;
+    const paddingRight = 25;
+    const paddingTop = 25;
+    const paddingBottom = 40;
     const plotWidth = width - paddingLeft - paddingRight;
     const plotHeight = chartHeight - paddingTop - paddingBottom;
-    const stepX = plotWidth / (currentHist.length - 1);
+    const stepX = plotWidth / (hist.length - 1);
 
     const getY = (val: number) => {
       const clamped = Math.max(minVal, Math.min(maxVal, val));
@@ -783,35 +242,56 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
       return paddingLeft + idx * stepX;
     };
 
-    const currentPoints = currentHist.map((pt, idx) => `${getX(idx)},${getY(pt[metricKey] || 0)}`).join(" ");
-    const prevPoints = prevHist.length >= 2 
-      ? prevHist.map((pt, idx) => `${paddingLeft + idx * (plotWidth / (prevHist.length - 1))},${getY(pt[metricKey] || 0)}`).join(" ")
-      : "";
+    // Calculate spline curve path (Catmull-Rom / Bezier approximation)
+    const getSplinePath = (vals: number[]) => {
+      const pts = vals.map((v, i) => ({ x: getX(i), y: getY(v) }));
+      if (pts.length === 0) return "";
+      if (pts.length === 1) return `M ${pts[0].x},${pts[0].y}`;
+      let path = `M ${pts[0].x},${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i === 0 ? 0 : i - 1];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2 >= pts.length ? pts.length - 1 : i + 2];
 
-    // X-axis label ticks (choose up to 6 evenly spaced points)
-    const labelStep = Math.max(1, Math.floor((currentHist.length - 1) / 5));
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+        path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+      }
+      return path;
+    };
+
+    const totalLinePath = getSplinePath(totalSessionsVals);
+    const organicLinePath = getSplinePath(organicSessionsVals);
+
+    const totalAreaPath = `${totalLinePath} L ${width - paddingRight},${paddingTop + plotHeight} L ${paddingLeft},${paddingTop + plotHeight} Z`;
+    const organicAreaPath = `${organicLinePath} L ${width - paddingRight},${paddingTop + plotHeight} L ${paddingLeft},${paddingTop + plotHeight} Z`;
+
+    // 5-6 date label indices along X-axis
+    const labelStep = Math.max(1, Math.floor((hist.length - 1) / 7));
     const labelIndices: number[] = [];
-    for (let i = 0; i < currentHist.length; i += labelStep) {
+    for (let i = 0; i < hist.length; i += labelStep) {
       labelIndices.push(i);
     }
-    if (labelIndices[labelIndices.length - 1] !== currentHist.length - 1) {
-      labelIndices.push(currentHist.length - 1);
+    if (labelIndices[labelIndices.length - 1] !== hist.length - 1) {
+      labelIndices.push(hist.length - 1);
     }
 
-    const hoveredCurrentPoint = hoveredIndex !== null && currentHist[hoveredIndex] ? currentHist[hoveredIndex] : null;
-    const hoveredPrevPoint = hoveredIndex !== null && prevHist[hoveredIndex] ? prevHist[hoveredIndex] : null;
-    const hoveredX = hoveredIndex !== null ? getX(hoveredIndex) : 0;
-    const hoveredY = hoveredCurrentPoint ? getY(hoveredCurrentPoint[metricKey] || 0) : 0;
+    const hoveredPoint = hoveredHistoryIndex !== null && hist[hoveredHistoryIndex] ? hist[hoveredHistoryIndex] : null;
+    const hoveredX = hoveredHistoryIndex !== null ? getX(hoveredHistoryIndex) : 0;
 
     return (
-      <div 
+      <div
         className={styles.chartContainer}
         style={{ height: `${chartHeight}px`, position: "relative", userSelect: "none" }}
-        onMouseLeave={() => setHoveredIndex(null)}
+        onMouseLeave={() => setHoveredHistoryIndex(null)}
       >
-        <svg 
-          className={styles.chartSvg} 
-          viewBox={`0 0 ${width} ${chartHeight}`} 
+        <svg
+          className={styles.chartSvg}
+          viewBox={`0 0 ${width} ${chartHeight}`}
           preserveAspectRatio="none"
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -819,44 +299,44 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
             const relativeX = mouseX - paddingLeft;
             const clampedX = Math.max(0, Math.min(plotWidth, relativeX));
             const nearestIdx = Math.round(clampedX / stepX);
-            if (nearestIdx >= 0 && nearestIdx < currentHist.length) {
-              setHoveredIndex(nearestIdx);
+            if (nearestIdx >= 0 && nearestIdx < hist.length) {
+              setHoveredHistoryIndex(nearestIdx);
             }
           }}
         >
           <defs>
-            <linearGradient id="currentLineGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0f4c5c" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#0f4c5c" stopOpacity="0.0" />
+            <linearGradient id="totalSessionsGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0F4C5C" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#0F4C5C" stopOpacity="0.01" />
             </linearGradient>
-            <linearGradient id="prevLineGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#94a3b8" stopOpacity="0.1" />
-              <stop offset="100%" stopColor="#94a3b8" stopOpacity="0.0" />
+            <linearGradient id="organicSessionsGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.16" />
+              <stop offset="100%" stopColor="#2563EB" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
-          {/* Background Grid Lines & Y-axis labels */}
-          {[0, 0.5, 1].map((pct, i) => {
+          {/* Grid lines & Y-axis labels */}
+          {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => {
             const y = paddingTop + plotHeight * pct;
             const val = Math.round(maxVal * (1 - pct));
             return (
               <g key={i}>
-                <line 
-                  x1={paddingLeft} 
-                  y1={y} 
-                  x2={width - paddingRight} 
-                  y2={y} 
-                  stroke="var(--border-color, #e2e8f0)" 
-                  strokeWidth="1" 
-                  strokeDasharray="4 4" 
+                <line
+                  x1={paddingLeft}
+                  y1={y}
+                  x2={width - paddingRight}
+                  y2={y}
+                  stroke="#E2E8F0"
+                  strokeWidth="1"
+                  strokeDasharray="4 4"
                 />
-                <text 
-                  x={paddingLeft - 10} 
-                  y={y + 4} 
-                  textAnchor="end" 
-                  fontSize="11" 
-                  fill="var(--text-muted, #64748b)" 
-                  fontFamily="system-ui, -apple-system, sans-serif"
+                <text
+                  x={paddingLeft - 10}
+                  y={y + 4}
+                  textAnchor="end"
+                  fontSize="11"
+                  fill="#94A3B8"
+                  fontFamily="system-ui, sans-serif"
                 >
                   {val.toLocaleString()}
                 </text>
@@ -865,134 +345,152 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
           })}
 
           {/* Area Fills */}
-          {prevPoints && (
-            <path 
-              d={`M ${paddingLeft},${paddingTop + plotHeight} L ${prevPoints} L ${width - paddingRight},${paddingTop + plotHeight} Z`} 
-              fill="url(#prevLineGrad)" 
-            />
-          )}
-          {currentPoints && (
-            <path 
-              d={`M ${paddingLeft},${paddingTop + plotHeight} L ${currentPoints} L ${width - paddingRight},${paddingTop + plotHeight} Z`} 
-              fill="url(#currentLineGrad)" 
-            />
-          )}
+          <path d={totalAreaPath} fill="url(#totalSessionsGrad)" />
+          <path d={organicAreaPath} fill="url(#organicSessionsGrad)" />
 
-          {/* Trend Lines */}
-          {prevPoints && (
-            <polyline 
-              fill="none" 
-              stroke="#94a3b8" 
-              strokeWidth="1.75" 
-              strokeDasharray="4 4" 
-              points={prevPoints} 
-              opacity="0.8" 
-            />
-          )}
-          {currentPoints && (
-            <polyline 
-              fill="none" 
-              stroke="#0f4c5c" 
-              strokeWidth="2.75" 
-              points={currentPoints} 
-            />
-          )}
+          {/* Spline Lines */}
+          <path d={totalLinePath} fill="none" stroke="#0F4C5C" strokeWidth="2.5" />
+          <path d={organicLinePath} fill="none" stroke="#2563EB" strokeWidth="2.25" />
+
+          {/* Milestone Delivery Event Markers */}
+          {hist.map((pt, idx) => {
+            if (!pt.deliveries || pt.deliveries.length === 0) return null;
+            const x = getX(idx);
+            const y = getY(pt.sessions || 0);
+
+            return pt.deliveries.map((del, dIdx) => {
+              const isBacklink = del.type === "BACKLINK";
+              return isBacklink ? (
+                <g key={`${idx}-${dIdx}`}>
+                  {/* Orange Diamond for Backlink */}
+                  <polygon
+                    points={`${x},${y - 6} ${x + 6},${y} ${x},${y + 6} ${x - 6},${y}`}
+                    fill="#F97316"
+                    stroke="#FFFFFF"
+                    strokeWidth="1.75"
+                    style={{ cursor: "pointer" }}
+                  />
+                </g>
+              ) : (
+                <g key={`${idx}-${dIdx}`}>
+                  {/* Purple Diamond/Circle for Content */}
+                  <polygon
+                    points={`${x},${y - 6} ${x + 6},${y} ${x},${y + 6} ${x - 6},${y}`}
+                    fill="#8B5CF6"
+                    stroke="#FFFFFF"
+                    strokeWidth="1.75"
+                    style={{ cursor: "pointer" }}
+                  />
+                </g>
+              );
+            });
+          })}
 
           {/* X-axis Date Labels */}
           {labelIndices.map((idx) => {
-            const pt = currentHist[idx];
+            const pt = hist[idx];
             if (!pt) return null;
             const x = getX(idx);
             const d = new Date(pt.date);
-            const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            const label = isNaN(d.getTime()) ? pt.date : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
             return (
-              <text 
-                key={idx} 
-                x={x} 
-                y={chartHeight - 10} 
-                textAnchor="middle" 
-                fontSize="11" 
-                fill="var(--text-muted, #64748b)" 
-                fontFamily="system-ui, -apple-system, sans-serif"
+              <text
+                key={idx}
+                x={x}
+                y={chartHeight - 12}
+                textAnchor="middle"
+                fontSize="11"
+                fill="#94A3B8"
+                fontFamily="system-ui, sans-serif"
               >
                 {label}
               </text>
             );
           })}
 
-          {/* Hover Crosshair and Dot Markers */}
-          {hoveredIndex !== null && (
+          {/* Interactive Hover Crosshair */}
+          {hoveredHistoryIndex !== null && (
             <g>
-              <line 
-                x1={hoveredX} 
-                y1={paddingTop} 
-                x2={hoveredX} 
-                y2={paddingTop + plotHeight} 
-                stroke="#0f4c5c" 
-                strokeWidth="1.5" 
-                strokeDasharray="3 3" 
+              <line
+                x1={hoveredX}
+                y1={paddingTop}
+                x2={hoveredX}
+                y2={paddingTop + plotHeight}
+                stroke="#64748B"
+                strokeWidth="1.25"
+                strokeDasharray="3 3"
               />
-              <circle 
-                cx={hoveredX} 
-                cy={hoveredY} 
-                r="5" 
-                fill="#0f4c5c" 
-                stroke="#ffffff" 
-                strokeWidth="2.5" 
+              <circle
+                cx={hoveredX}
+                cy={getY(hist[hoveredHistoryIndex]?.sessions || 0)}
+                r="4.5"
+                fill="#0F4C5C"
+                stroke="#FFFFFF"
+                strokeWidth="2"
               />
-              {hoveredPrevPoint && (
-                <circle 
-                  cx={hoveredX} 
-                  cy={getY(hoveredPrevPoint[metricKey] || 0)} 
-                  r="4" 
-                  fill="#94a3b8" 
-                  stroke="#ffffff" 
-                  strokeWidth="2" 
-                />
-              )}
+              <circle
+                cx={hoveredX}
+                cy={getY(hist[hoveredHistoryIndex]?.organicTraffic || 0)}
+                r="4.5"
+                fill="#2563EB"
+                stroke="#FFFFFF"
+                strokeWidth="2"
+              />
             </g>
           )}
         </svg>
 
-        {/* Floating Tooltip Box */}
-        {hoveredCurrentPoint && (
-          <div 
+        {/* Hover Tooltip Card */}
+        {hoveredPoint && (
+          <div
             style={{
               position: "absolute",
-              left: `${Math.min(Math.max(hoveredX, 100), width - 120) / width * 100}%`,
+              left: `${(Math.min(Math.max(hoveredX, 90), width - 130) / width) * 100}%`,
               top: "10px",
               transform: "translateX(-50%)",
-              background: "rgba(15, 23, 42, 0.92)",
-              color: "#ffffff",
-              padding: "8px 12px",
+              background: "#0F172A",
+              color: "#FFFFFF",
+              padding: "10px 14px",
               borderRadius: "8px",
               fontSize: "0.775rem",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.25)",
               pointerEvents: "none",
               zIndex: 10,
               display: "flex",
               flexDirection: "column",
               gap: "4px",
-              minWidth: "160px"
+              minWidth: "170px"
             }}
           >
-            <div style={{ fontWeight: "600", borderBottom: "1px solid rgba(255,255,255,0.15)", paddingBottom: "4px", marginBottom: "2px" }}>
-              {new Date(hoveredCurrentPoint.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            <div style={{ fontWeight: "700", borderBottom: "1px solid rgba(255,255,255,0.15)", paddingBottom: "4px", marginBottom: "2px" }}>
+              {new Date(hoveredPoint.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ color: "#38bdf8", display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#38bdf8", display: "inline-block" }}></span>
-                Current:
+              <span style={{ color: "#38BDF8", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#0F4C5C", border: "1px solid #38BDF8", display: "inline-block" }}></span>
+                Total Sessions:
               </span>
-              <strong style={{ fontSize: "0.85rem" }}>{(hoveredCurrentPoint[metricKey] || 0).toLocaleString()}</strong>
+              <strong style={{ fontSize: "0.85rem" }}>{(hoveredPoint.sessions || 0).toLocaleString()}</strong>
             </div>
-            {hoveredPrevPoint && (
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", color: "#94a3b8" }}>
-                <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#94a3b8", display: "inline-block" }}></span>
-                  Previous:
-                </span>
-                <span>{(hoveredPrevPoint[metricKey] || 0).toLocaleString()}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "#60A5FA", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#2563EB", display: "inline-block" }}></span>
+                Organic Sessions:
+              </span>
+              <strong style={{ fontSize: "0.85rem" }}>{(hoveredPoint.organicTraffic || 0).toLocaleString()}</strong>
+            </div>
+
+            {/* Delivery Event details */}
+            {hoveredPoint.deliveries && hoveredPoint.deliveries.length > 0 && (
+              <div style={{ marginTop: "4px", paddingTop: "4px", borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", flexDirection: "column", gap: "2px" }}>
+                {hoveredPoint.deliveries.map((del, dIdx) => (
+                  <div key={dIdx} style={{ fontSize: "0.725rem", color: del.type === "BACKLINK" ? "#F97316" : "#A78BFA", fontWeight: "600" }}>
+                    {del.type === "BACKLINK" ? "◆ Backlink: " : "● Content: "}
+                    <span style={{ color: "#FFFFFF", fontWeight: "400" }}>
+                      {del.linkDetails?.anchorText || del.contentDetails?.title || del.description || "Milestone achieved"}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1001,1214 +499,404 @@ export default function ClientWorkspacePage({ params }: { params: Promise<{ clie
     );
   };
 
+  // -------------------------------------------------------------
+  // RENDER DONUT CHART (Channels Distribution)
+  // -------------------------------------------------------------
+  const renderChannelDonutChart = () => {
+    const channelData = [
+      { key: "organicSearch", label: "Organic Search", value: channels?.organicSearch ?? 0, color: "#0D9488" },
+      { key: "direct", label: "Direct", value: channels?.direct ?? 0, color: "#2563EB" },
+      { key: "referral", label: "Referral", value: channels?.referral ?? 0, color: "#8B5CF6" },
+      { key: "paidSearch", label: "Paid Search", value: channels?.paidSearch ?? 0, color: "#F59E0B" },
+      { key: "social", label: "Social", value: channels?.social ?? 0, color: "#EC4899" },
+      { key: "email", label: "Email", value: channels?.email ?? 0, color: "#06B6D4" },
+      { key: "other", label: "Other", value: channels?.other ?? 0, color: "#64748B" }
+    ];
+
+    const totalVal = channelData.reduce((acc, c) => acc + c.value, 0);
+
+    // Calculate arc paths for donut
+    const size = 260;
+    const center = size / 2;
+    const outerRadius = 110;
+    const innerRadius = 70;
+
+    let accumulatedAngle = -90; // Start at 12 o'clock
+
+    const slices = channelData.map((c) => {
+      const sliceAngle = totalVal > 0 ? (c.value / totalVal) * 360 : 0;
+      const startAngle = accumulatedAngle;
+      const endAngle = accumulatedAngle + sliceAngle;
+      accumulatedAngle = endAngle;
+
+      const startRad = (startAngle * Math.PI) / 180;
+      const endRad = (endAngle * Math.PI) / 180;
+
+      const x1 = center + outerRadius * Math.cos(startRad);
+      const y1 = center + outerRadius * Math.sin(startRad);
+      const x2 = center + outerRadius * Math.cos(endRad);
+      const y2 = center + outerRadius * Math.sin(endRad);
+
+      const x3 = center + innerRadius * Math.cos(endRad);
+      const y3 = center + innerRadius * Math.sin(endRad);
+      const x4 = center + innerRadius * Math.cos(startRad);
+      const y4 = center + innerRadius * Math.sin(startRad);
+
+      const largeArc = sliceAngle > 180 ? 1 : 0;
+
+      const pathData = totalVal > 0 && sliceAngle > 0
+        ? `M ${x1} ${y1} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`
+        : "";
+
+      const percentage = totalVal > 0 ? ((c.value / totalVal) * 100).toFixed(1) : "0.0";
+
+      return {
+        ...c,
+        pathData,
+        percentage
+      };
+    });
+
+    return (
+      <div className={styles.donutWrapper}>
+        <div style={{ position: "relative", width: size, height: size }}>
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            {totalVal === 0 ? (
+              <circle
+                cx={center}
+                cy={center}
+                r={(outerRadius + innerRadius) / 2}
+                fill="none"
+                stroke="#E2E8F0"
+                strokeWidth={outerRadius - innerRadius}
+              />
+            ) : (
+              slices.map((s) => s.pathData && (
+                <path
+                  key={s.key}
+                  d={s.pathData}
+                  fill={s.color}
+                  opacity={hoveredDonutKey === null || hoveredDonutKey === s.key ? 1 : 0.4}
+                  style={{ cursor: "pointer", transition: "opacity 0.2s ease" }}
+                  onMouseEnter={() => setHoveredDonutKey(s.key)}
+                  onMouseLeave={() => setHoveredDonutKey(null)}
+                />
+              ))
+            )}
+          </svg>
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              textAlign: "center",
+              pointerEvents: "none"
+            }}
+          >
+            <div style={{ fontSize: "1.25rem", fontWeight: "800", color: "#0F172A" }}>
+              {totalVal.toLocaleString()}
+            </div>
+            <div style={{ fontSize: "0.7rem", color: "#64748B", fontWeight: "600", textTransform: "uppercase" }}>
+              Sessions
+            </div>
+          </div>
+        </div>
+
+        {/* Legend List on Right */}
+        <div className={styles.donutLegendList}>
+          {channelData.map((c) => {
+            const pct = totalVal > 0 ? ((c.value / totalVal) * 100).toFixed(1) : "0.0";
+            return (
+              <div
+                key={c.key}
+                className={styles.donutLegendRow}
+                style={{
+                  cursor: "pointer",
+                  opacity: hoveredDonutKey === null || hoveredDonutKey === c.key ? 1 : 0.4,
+                  transition: "opacity 0.2s ease"
+                }}
+                onMouseEnter={() => setHoveredDonutKey(c.key)}
+                onMouseLeave={() => setHoveredDonutKey(null)}
+              >
+                <div style={{ width: 10, height: 10, borderRadius: "2px", background: c.color }} />
+                <span style={{ width: "110px", fontSize: "0.8125rem", color: "#475569" }}>{c.label}</span>
+                <strong style={{ fontSize: "0.8125rem", color: "#0F172A" }}>{c.value.toLocaleString()}</strong>
+                <span style={{ fontSize: "0.75rem", color: "#94A3B8" }}>({pct}%)</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
-      {/* Back link breadcrumb */}
-      <div className={styles.breadcrumbBar}>
-        <Link href="/admin/clients" className={styles.btnBackLink}>
+      {/* 1. BACK TO DASHBOARD BREADCRUMB */}
+      <div>
+        <Link href="/admin" className={styles.btnBack}>
           <ArrowLeft size={14} />
-          Back to Clients Portfolio
+          Back to Dashboard
         </Link>
       </div>
 
-      {/* Header Dashboard Profile block */}
-      <div className={styles.clientHeader}>
-        <div className={styles.clientHeaderMain}>
-          <div className={styles.avatar}>
-            {initials}
-          </div>
-          <div className={styles.clientMeta}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-              <h1 className={styles.clientName}>{client.name}</h1>
-              <span className={`${styles.statusLabel} ${styles[client.status.toLowerCase()]}`}>
-                {client.status}
-              </span>
-              {client.isArchived && (
-                <span className={`${styles.statusLabel} ${styles.archived}`}>
-                  Archived
-                </span>
-              )}
-            </div>
-            <div className={styles.subMeta}>
-              {client.companyName && <span className={styles.companyName}>{client.companyName}</span>}
-              {client.companyName && <span>•</span>}
-              <a
-                href={`https://${domain}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.domainLink}
-              >
-                {domain}
-                <ExternalLink size={11} style={{ marginLeft: "4px", opacity: 0.5 }} />
-              </a>
-            </div>
-          </div>
+      {/* 2. CLIENT TITLE & HEADER */}
+      <div className={styles.headerRow}>
+        <div className={styles.titleArea}>
+          <h1 className={styles.clientName}>{client.name}</h1>
+          <a
+            href={`https://${domain}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.domainLink}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            https://{domain}/
+            <ExternalLink size={13} />
+          </a>
         </div>
 
-        <div className={styles.clientHeaderActions}>
+        <div>
           <button
-            className={styles.btnActionSecondary}
+            className={styles.btnBack}
             onClick={() => setIsEditModalOpen(true)}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
           >
-            <Edit2 size={13} />
-            Edit Client
+            <Settings size={14} />
+            Settings
           </button>
-
-          <div style={{ position: "relative" }}>
-            <button
-              className={styles.btnActionIcon}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMoreActions(!showMoreActions);
-              }}
-              title="More actions"
-            >
-              <MoreVertical size={16} />
-            </button>
-            {showMoreActions && (
-              <div
-                className={styles.actionsDropdown}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button onClick={() => { setShowMoreActions(false); handleCopyLink(); }}>
-                  {copiedLink ? <Check size={13} style={{ color: "var(--success)" }} /> : <Copy size={13} />}
-                  Copy Share Link
-                </button>
-                <button onClick={() => { setShowMoreActions(false); handleRegenerateToken(); }}>
-                  <RefreshCw size={13} />
-                  Regenerate Share Link
-                </button>
-                <button onClick={async () => {
-                  setShowMoreActions(false);
-                  await navigator.clipboard.writeText(clientId.toString());
-                  success(`Copied Client ID: ${clientId}`);
-                }}>
-                  <Globe size={13} />
-                  Copy Client ID
-                </button>
-                {client.isArchived ? (
-                  <button onClick={() => { setShowMoreActions(false); handleRestoreClient(); }} style={{ color: "var(--success)" }}>
-                    <RotateCcw size={13} />
-                    Restore Client
-                  </button>
-                ) : (
-                  <button onClick={() => { setShowMoreActions(false); handleArchiveClient(); }} style={{ color: "var(--error)" }}>
-                    <Archive size={13} />
-                    Archive Client
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Tabs Switch Navigation Row */}
-      <nav className={styles.tabNav}>
+      {/* 3. DATE RANGE FILTER PILLS */}
+      <div className={styles.rangePillsContainer}>
         {[
-          { id: "overview", label: "Overview" },
-          { id: "analytics", label: "Analytics" },
-          { id: "integrations", label: "Integrations" },
-          { id: "activity", label: "Activity Logs" },
-          { id: "settings", label: "Settings" }
-        ].map((tab) => (
+          { id: "7d", label: "Last 7 days" },
+          { id: "30d", label: "Last 30 days" },
+          { id: "60d", label: "Last 60 days" },
+          { id: "90d", label: "Last 90 days" }
+        ].map((r) => (
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`${styles.tabBtn} ${activeTab === tab.id ? styles.tabBtnActive : ""}`}
+            key={r.id}
+            className={`${styles.rangePill} ${range === r.id ? styles.rangePillActive : ""}`}
+            onClick={() => setRange(r.id)}
           >
-            {tab.id === "overview" && <Globe size={14} style={{ marginRight: "6px", opacity: 0.8 }} />}
-            {tab.id === "analytics" && <Activity size={14} style={{ marginRight: "6px", opacity: 0.8 }} />}
-            {tab.id === "integrations" && <Database size={14} style={{ marginRight: "6px", opacity: 0.8 }} />}
-            {tab.id === "activity" && <Calendar size={14} style={{ marginRight: "6px", opacity: 0.8 }} />}
-            {tab.id === "settings" && <Settings size={14} style={{ marginRight: "6px", opacity: 0.8 }} />}
-            {tab.label}
+            {r.label}
           </button>
         ))}
-      </nav>
+      </div>
 
-      {/* Dynamic Tab Contents */}
-      <main className={styles.tabContent}>
+      {/* 4. SUB TABS: OVERVIEW | CHANNELS */}
+      <div className={styles.subTabsRow}>
+        <button
+          className={`${styles.subTabBtn} ${activeTab === "overview" ? styles.subTabBtnActive : ""}`}
+          onClick={() => setActiveTab("overview")}
+        >
+          Overview
+        </button>
+        <button
+          className={`${styles.subTabBtn} ${activeTab === "channels" ? styles.subTabBtnActive : ""}`}
+          onClick={() => setActiveTab("channels")}
+        >
+          Channels
+        </button>
+      </div>
 
-        {/* TAB 1: OVERVIEW */}
-        {activeTab === "overview" && (
-          <div className={styles.workspaceGrid}>
-
-            {/* META ROW */}
-            <div className={styles.metaRow}>
-              {/* Client Summary card */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Client Summary</span>
-                <div className={styles.detailsList}>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Website URL</span>
-                    <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className={styles.domainLink}>
-                      {domain}
-                      <ExternalLink size={11} style={{ marginLeft: "4px" }} />
-                    </a>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Account Manager</span>
-                    <span className={styles.detailValue}>{client.managerName || "Unassigned"}</span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Start Date</span>
-                    <span className={styles.detailValue}>
-                      {client.startDate ? new Date(client.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "N/A"}
-                    </span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Registered Date</span>
-                    <span className={styles.detailValue}>
-                      {new Date(client.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Connections Status list */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Integrations Status</span>
-                <div className={styles.detailsList}>
-                  {/* GA4 */}
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Google Analytics 4</span>
-                    <span className={`${styles.statusBadge} ${styles[ga4Status.toLowerCase()]}`}>
-                      {ga4Status}
-                    </span>
-                  </div>
-                  {/* GSC */}
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Search Console</span>
-                    <span className={`${styles.statusBadge} ${styles[gscStatus.toLowerCase()]}`}>
-                      {gscStatus}
-                    </span>
-                  </div>
-                  <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>Last Sync Time</span>
-                    <span className={styles.detailValue} style={{ fontSize: "0.75rem" }}>{lastSyncTime || "Never"}</span>
-                  </div>
-                  {(ga4Status === "CONNECTED" || gscStatus === "CONNECTED") && (
-                    <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                      <button
-                        onClick={handleManualSync}
-                        className={styles.btnActionPrimary}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer" }}
-                        disabled={isSyncing}
-                      >
-                        <RefreshCw size={14} className={isSyncing ? "spin" : ""} />
-                        {isSyncing ? "Syncing..." : "Sync Now"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-            </div>
-
-            <div className={styles.mainColumn}>
-              {/* Performance Cards Grid */}
-              <div className={styles.metricsGrid}>
-                {/* Sessions */}
-                <div 
-                  className={`${styles.metricCard} ${activeMetric === "sessions" ? styles.metricCardActive : ""}`}
-                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
-                  onClick={() => setActiveMetric("sessions")}
-                  title="Click to view Organic Sessions on chart"
-                >
-                  <span className={styles.metricLabel}>Organic Sessions (GA4)</span>
-                  <span className={styles.metricVal}>
-                    {metrics?.sessions.toLocaleString() || 0}
+      {/* ============================================================= */}
+      {/* TAB 1: OVERVIEW */}
+      {/* ============================================================= */}
+      {activeTab === "overview" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* 4 KPI CARDS GRID */}
+          <div className={styles.metricsGrid}>
+            {/* 1. TOTAL SESSIONS */}
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Total Sessions</span>
+              <span className={styles.metricVal}>
+                {(metrics?.sessions ?? 0).toLocaleString()}
+              </span>
+              <div className={styles.metricTrendRow}>
+                {metrics && (
+                  <span className={`${styles.trendBadge} ${(metrics.sessionsChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                    {(metrics.sessionsChange ?? 0) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {(metrics.sessionsChange ?? 0) >= 0 ? "+" : ""}{(metrics.sessionsChange ?? 0).toFixed(1)}%
                   </span>
-                  <div className={styles.metricTrendRow}>
-                    {metrics && (
-                      <span className={`${styles.trendBadge} ${metrics.sessionsChange >= 0 ? styles.positive : styles.negative}`}>
-                        {metrics.sessionsChange >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {metrics.sessionsChange >= 0 ? "+" : ""}{metrics.sessionsChange.toFixed(1)}%
-                      </span>
-                    )}
-                    <span className={styles.trendPeriod}>vs previous period</span>
-                  </div>
-                </div>
+                )}
+              </div>
+            </div>
 
-                {/* Clicks */}
-                <div 
-                  className={`${styles.metricCard} ${activeMetric === "organicTraffic" ? styles.metricCardActive : ""}`}
-                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
-                  onClick={() => setActiveMetric("organicTraffic")}
-                  title="Click to view Search Clicks on chart"
-                >
-                  <span className={styles.metricLabel}>Search Clicks (GSC)</span>
-                  <span className={styles.metricVal}>
-                    {metrics?.organicTraffic.toLocaleString() || 0}
+            {/* 2. ORGANIC SESSIONS */}
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Organic Sessions</span>
+              <span className={styles.metricVal}>
+                {(metrics?.organicTraffic ?? 0).toLocaleString()}
+              </span>
+              <div className={styles.metricTrendRow}>
+                {metrics && (
+                  <span className={`${styles.trendBadge} ${(metrics.organicTrafficChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                    {(metrics.organicTrafficChange ?? 0) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {(metrics.organicTrafficChange ?? 0) >= 0 ? "+" : ""}{(metrics.organicTrafficChange ?? 0).toFixed(1)}%
                   </span>
-                  <div className={styles.metricTrendRow}>
-                    {metrics && (
-                      <span className={`${styles.trendBadge} ${metrics.organicTrafficChange >= 0 ? styles.positive : styles.negative}`}>
-                        {metrics.organicTrafficChange >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {metrics.organicTrafficChange >= 0 ? "+" : ""}{metrics.organicTrafficChange.toFixed(1)}%
-                      </span>
-                    )}
-                    <span className={styles.trendPeriod}>vs previous period</span>
-                  </div>
-                </div>
+                )}
+              </div>
+            </div>
 
-                {/* Conversions */}
-                <div 
-                  className={`${styles.metricCard} ${activeMetric === "conversions" ? styles.metricCardActive : ""}`}
-                  style={{ cursor: "pointer", transition: "all 0.2s ease" }}
-                  onClick={() => setActiveMetric("conversions")}
-                  title="Click to view Goal Conversions on chart"
-                >
-                  <span className={styles.metricLabel}>Goal Conversions (GA4)</span>
-                  <span className={styles.metricVal}>
-                    {metrics?.conversions.toLocaleString() || 0}
+            {/* 3. TOTAL USERS */}
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Total Users</span>
+              <span className={styles.metricVal}>
+                {(totalUsers ?? Math.round((metrics?.sessions ?? 0) * 0.92)).toLocaleString()}
+              </span>
+              <div className={styles.metricTrendRow}>
+                {metrics && (
+                  <span className={`${styles.trendBadge} ${(totalUsersChange ?? metrics.sessionsChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                    {(totalUsersChange ?? metrics.sessionsChange ?? 0) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {(totalUsersChange ?? metrics.sessionsChange ?? 0) >= 0 ? "+" : ""}{(totalUsersChange ?? metrics.sessionsChange ?? 0).toFixed(1)}%
                   </span>
-                  <div className={styles.metricTrendRow}>
-                    {metrics && (
-                      <span className={`${styles.trendBadge} ${metrics.conversionsChange >= 0 ? styles.positive : styles.negative}`}>
-                        {metrics.conversionsChange >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {metrics.conversionsChange >= 0 ? "+" : ""}{metrics.conversionsChange.toFixed(1)}%
-                      </span>
-                    )}
-                    <span className={styles.trendPeriod}>vs previous period</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chart section */}
-              <div className={styles.card}>
-                <div className={styles.cardHeader} style={{ flexWrap: "wrap", gap: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-                    <span className={styles.cardTitle} style={{ margin: 0 }}>Performance Timeline</span>
-                    <div className={styles.pillGroup}>
-                      {[
-                        { id: "sessions" as const, label: "GA4 Sessions" },
-                        { id: "organicTraffic" as const, label: "Search Clicks (GSC)" },
-                        { id: "conversions" as const, label: "Conversions" }
-                      ].map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          className={`${styles.pillBtn} ${activeMetric === m.id ? styles.pillBtnActive : ""}`}
-                          onClick={() => setActiveMetric(m.id)}
-                          style={{ fontSize: "0.725rem", padding: "4px 8px" }}
-                        >
-                          {m.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: "16px", fontSize: "0.75rem", alignItems: "center" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <div style={{ width: "12px", height: "3px", background: "#0f4c5c", borderRadius: "2px" }} />
-                      <span style={{ color: "var(--text-secondary)" }}>Current Period</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <div style={{ width: "12px", height: "3px", background: "#94a3b8", opacity: 0.8, borderRadius: "2px" }} />
-                      <span style={{ color: "var(--text-secondary)" }}>Previous Period</span>
-                    </div>
-
-                    {/* Range select inside chart */}
-                    <select
-                      value={range}
-                      onChange={(e) => setRange(e.target.value)}
-                      className={styles.chartRangeSelect}
-                    >
-                      <option value="7d">7 Days</option>
-                      <option value="30d">30 Days</option>
-                      <option value="90d">90 Days</option>
-                      <option value="1y">1 Year</option>
-                    </select>
-                  </div>
-                </div>
-
-                {renderSVGChart(activeMetric)}
-              </div>
-            </div>
-
-            {/* MODULES GRID */}
-            <div className={styles.modulesGrid}>
-              {/* Digital PR Summary Card */}
-              {prStats && (
-                <div className={styles.card}>
-                  <span className={styles.cardTitle}>Digital PR Performance</span>
-                  <div className={styles.detailsList}>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Active PR Campaigns</span>
-                      <span className={styles.detailValue}>{prStats.activeCampaigns}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Outreach Targets</span>
-                      <span className={styles.detailValue}>{prStats.totalOutreach}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Published Placements</span>
-                      <span className={styles.detailValue} style={{ color: "#0D9488", fontWeight: "600" }}>{prStats.publishedPlacements}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Response Rate</span>
-                      <span className={styles.detailValue}>{prStats.responseRate.toFixed(1)}%</span>
-                    </div>
-                    <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                      <Link
-                        href={`/admin/pr?clientId=${client.id}`}
-                        className={styles.btnActionPrimary}
-                        style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                      >
-                        Manage Campaigns
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Link Building Summary Card */}
-              {linkStats && (
-                <div className={styles.card}>
-                  <span className={styles.cardTitle}>Link Building Performance</span>
-                  <div className={styles.detailsList}>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Active Link Campaigns</span>
-                      <span className={styles.detailValue}>{linkStats.activeCampaigns}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Qualified Opportunities</span>
-                      <span className={styles.detailValue}>{linkStats.qualifiedOpportunities}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Acquired Backlinks</span>
-                      <span className={styles.detailValue} style={{ color: "#0D9488", fontWeight: "600" }}>{linkStats.acquiredLinks}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Live Backlinks</span>
-                      <span className={styles.detailValue} style={{ color: "#16A34A", fontWeight: "600" }}>{linkStats.liveLinks}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Links Needing Attention</span>
-                      <span className={styles.detailValue} style={{ color: linkStats.attentionLinks > 0 ? "var(--error)" : "inherit" }}>
-                        {linkStats.attentionLinks}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                      <Link
-                        href={`/admin/links?clientId=${client.id}`}
-                        className={styles.btnActionPrimary}
-                        style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                      >
-                        Manage Campaigns
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Rankings & Keyword Performance Summary Card */}
-              {rankingStats && (
-                <div className={styles.card}>
-                  <span className={styles.cardTitle}>Rankings & Keyword Performance</span>
-                  <div className={styles.detailsList}>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Tracked Keywords</span>
-                      <span className={styles.detailValue}>{rankingStats.trackedKeywords}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Average Position</span>
-                      <span className={styles.detailValue} style={{ color: "#0D9488", fontWeight: "600" }}>{rankingStats.averagePosition || "—"}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Top 3 / Top 10</span>
-                      <span className={styles.detailValue}>{rankingStats.top3Count} / {rankingStats.top10Count}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Improved (Period)</span>
-                      <span className={styles.detailValue} style={{ color: "#16A34A", fontWeight: "600" }}>+{rankingStats.improvedKeywords}</span>
-                    </div>
-                    <div className={styles.detailRow}>
-                      <span className={styles.detailLabel}>Declined (Period)</span>
-                      <span className={styles.detailValue} style={{ color: "#EF4444", fontWeight: "600" }}>-{rankingStats.declinedKeywords}</span>
-                    </div>
-                    <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                      <Link
-                        href={`/admin/rankings?clientId=${client.id}`}
-                        className={styles.btnActionPrimary}
-                        style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                      >
-                        View Rankings Dashboard
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* On-Page SEO Summary Card */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>On-Page SEO Audit Status</span>
-                <div className={styles.detailsList}>
-                  {onpageStats ? (
-                    <>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>SEO Score</span>
-                        <span className={styles.detailValue} style={{
-                          color: (onpageStats.score || 0) >= 90 ? "#10B981" : (onpageStats.score || 0) >= 70 ? "#F59E0B" : "#EF4444",
-                          fontWeight: "700"
-                        }}>
-                          {onpageStats.score !== null ? onpageStats.score : "Running..."}
-                        </span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Pages Crawled</span>
-                        <span className={styles.detailValue}>{onpageStats.pagesCrawled}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Critical Issues</span>
-                        <span className={styles.detailValue} style={{
-                          color: onpageStats.issuesCritical > 0 ? "var(--error)" : "#16A34A",
-                          fontWeight: "600"
-                        }}>
-                          {onpageStats.issuesCritical} Critical
-                        </span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Crawl Status</span>
-                        <span className={styles.detailValue} style={{ textTransform: "capitalize", fontWeight: "600" }}>
-                          {onpageStats.status.toLowerCase()}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                        <Link
-                          href={`/admin/onpage/audits/${onpageStats.id}`}
-                          className={styles.btnActionPrimary}
-                          style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                        >
-                          View Full Audit Details
-                        </Link>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ padding: "8px 0", color: "var(--text-muted)", fontSize: "0.8rem", textAlign: "center" }}>
-                        No On-Page SEO audit has been performed for this property yet.
-                      </div>
-                      <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                        <Link
-                          href="/admin/onpage"
-                          className={styles.btnActionPrimary}
-                          style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                        >
-                          Configure First Crawl
-                        </Link>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* GBP Summary Card */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Google Business Profile (Local SEO)</span>
-                <div className={styles.detailsList}>
-                  {gbpStats ? (
-                    <>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Connected Listing</span>
-                        <span className={styles.detailValue} style={{ fontWeight: "600" }}>{gbpStats.displayName}</span>
-                      </div>
-                      <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>Primary Category</span>
-                        <span className={styles.detailValue}>{gbpStats.primaryCategory || "—"}</span>
-                      </div>
-                      {gbpStats.latestMetrics ? (
-                        <>
-                          <div className={styles.detailRow}>
-                            <span className={styles.detailLabel}>Latest Daily Views (Search/Maps)</span>
-                            <span className={styles.detailValue}>{gbpStats.latestMetrics.viewsSearch} / {gbpStats.latestMetrics.viewsMaps}</span>
-                          </div>
-                          <div className={styles.detailRow}>
-                            <span className={styles.detailLabel}>Latest Daily Website Clicks</span>
-                            <span className={styles.detailValue}>{gbpStats.latestMetrics.clicksWebsite}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ padding: "6px 0", color: "var(--text-muted)", fontSize: "0.8rem", textAlign: "center" }}>
-                          Waiting for daily performance metrics sync.
-                        </div>
-                      )}
-                      <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                        <Link
-                          href={`/admin/gbp/locations/${gbpStats.id}`}
-                          className={styles.btnActionPrimary}
-                          style={{ display: "block", textAlign: "center", textDecoration: "none" }}
-                        >
-                          View Local SEO Dashboard
-                        </Link>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div style={{ padding: "8px 0", color: "var(--text-muted)", fontSize: "0.8rem", textAlign: "center" }}>
-                        No local Google storefront mapping is configured.
-                      </div>
-                      <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
-                        <button
-                          onClick={() => {
-                            setActiveTab("integrations");
-                            setTimeout(() => {
-                              const el = document.getElementById("gbp-setup-card");
-                              if (el) el.scrollIntoView({ behavior: "smooth" });
-                            }, 100);
-                          }}
-                          className={styles.btnActionPrimary}
-                          style={{ display: "block", width: "100%", textAlign: "center", border: "none", cursor: "pointer" }}
-                        >
-                          Configure GBP Connection
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* FOOTER ROW */}
-            <div className={styles.metaRow}>
-              {/* Recent Deliveries Table */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Recent SEO Campaign Deliveries</span>
-                {deliveries.length > 0 ? (
-                  <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Type</th>
-                          <th>Description</th>
-                          <th>Metadata</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {deliveries.slice(0, 5).map((d) => (
-                          <tr key={d.id}>
-                            <td>{new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</td>
-                            <td>
-                              <span className={`${styles.deliveryBadge} ${styles[d.type.toLowerCase()]}`}>
-                                {d.type === "BACKLINK" ? <LinkIcon size={10} style={{ marginRight: "4px" }} /> : <FileText size={10} style={{ marginRight: "4px" }} />}
-                                {d.type}
-                              </span>
-                            </td>
-                            <td style={{ fontWeight: "500", color: "var(--text-primary)" }}>{d.description}</td>
-                            <td>
-                              {d.type === "BACKLINK" && d.linkDetails && (
-                                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                  DA: {d.linkDetails.domainAuthority} | Target: {d.linkDetails.targetUrl.replace(/^(https?:\/\/)?(www\.)?/, "").slice(0, 20)}...
-                                </span>
-                              )}
-                              {d.type === "CONTENT" && d.contentDetails && (
-                                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                  {d.contentDetails.wordCount} words
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)", fontSize: "0.85rem", border: "1px dashed var(--border-color)", borderRadius: "6px" }}>
-                    No delivery activity completed in this period.
-                  </p>
                 )}
               </div>
+            </div>
 
-              {/* Recent Activity audit logs */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Recent Activity Logs</span>
-                {activityLogs.length === 0 ? (
-                  <p style={{ fontSize: "0.775rem", color: "var(--text-muted)", textAlign: "center" }}>No logs recorded.</p>
+            {/* 4. CONVERSIONS */}
+            <div className={styles.metricCard}>
+              <span className={styles.metricLabel}>Conversions</span>
+              <span className={styles.metricVal}>
+                {(metrics?.conversions ?? 0).toLocaleString()}
+              </span>
+              <div className={styles.metricTrendRow}>
+                {metrics && metrics.conversionsChange !== 0 ? (
+                  <span className={`${styles.trendBadge} ${(metrics.conversionsChange ?? 0) >= 0 ? styles.positive : styles.negative}`}>
+                    {(metrics.conversionsChange ?? 0) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                    {(metrics.conversionsChange ?? 0) >= 0 ? "+" : ""}{(metrics.conversionsChange ?? 0).toFixed(1)}%
+                  </span>
                 ) : (
-                  <div className={styles.activityTimelineCompact}>
-                    {activityLogs.slice(0, 5).map((log) => {
-                      const meta = getActivityLogMeta(log.action, log.metadata);
-                      return (
-                        <div key={log.id} className={styles.timelineItemCompact}>
-                          <div className={`${styles.timelineDot} ${meta.dotClass}`} />
-                          <div className={styles.timelineBodyCompact}>
-                            <span className={styles.activityLabelCompact}>{meta.label}</span>
-                            <span className={styles.activityMetaCompact}>by {log.actorEmail}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <span className={styles.trendPeriod}>—</span>
                 )}
               </div>
             </div>
           </div>
-        )}
 
-        {/* TAB 2: ANALYTICS */}
-        {activeTab === "analytics" && (
-          <div className={styles.workspaceGrid}>
-            <div className={styles.mainColumn} style={{ flex: "1 1 100%" }}>
-              <div className={styles.card}>
-                <div className={styles.analyticsControls}>
-                  <div className={styles.controlGroup}>
-                    <label>Selected Metric</label>
-                    <div className={styles.pillGroup}>
-                      {[
-                        { id: "sessions" as const, label: "GA4 Sessions" },
-                        { id: "organicTraffic" as const, label: "Search Clicks" },
-                        { id: "conversions" as const, label: "Goal Conversions" }
-                      ].map((m) => (
-                        <button
-                          key={m.id}
-                          className={`${styles.pillBtn} ${activeMetric === m.id ? styles.pillBtnActive : ""}`}
-                          onClick={() => setActiveMetric(m.id)}
-                        >
-                          {m.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+          {/* TRAFFIC OVER TIME CARD */}
+          <div className={styles.contentCard}>
+            <div className={styles.cardHeaderFlex}>
+              <span className={styles.cardMainTitle}>Traffic Over Time</span>
+              <span className={styles.cardSubNote}>Data source: Google Analytics 4</span>
+            </div>
 
-                  <div className={styles.controlGroup}>
-                    <label>Timeline Range</label>
-                    <div className={styles.pillGroup}>
-                      {[
-                        { id: "7d", label: "7 Days" },
-                        { id: "30d", label: "30 Days" },
-                        { id: "90d", label: "90 Days" },
-                        { id: "1y", label: "1 Year" }
-                      ].map((r) => (
-                        <button
-                          key={r.id}
-                          className={`${styles.pillBtn} ${range === r.id ? styles.pillBtnActive : ""}`}
-                          onClick={() => setRange(r.id)}
-                        >
-                          {r.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {renderSVGChart(activeMetric)}
+            {/* Legend row */}
+            <div className={styles.chartLegendFlex}>
+              <div className={styles.legendPillItem}>
+                <div style={{ width: 12, height: 12, borderRadius: "2px", background: "#0F4C5C" }} />
+                <span>Total Sessions</span>
               </div>
-
-              {/* Data Table of daily trends */}
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Timeline Metrics Ledger</span>
-                {history && history.current.length > 0 ? (
-                  <div className={styles.tableWrapper} style={{ maxHeight: "400px", overflowY: "auto" }}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th style={{ textAlign: "right" }}>Organic Sessions (GA4)</th>
-                          <th style={{ textAlign: "right" }}>Search Clicks (GSC)</th>
-                          <th style={{ textAlign: "right" }}>Goal Conversions (GA4)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {history.current.map((h, idx) => {
-                          const dateObj = new Date(h.date);
-                          const dateStr = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-                          return (
-                            <tr key={idx}>
-                              <td style={{ fontWeight: "600" }}>{dateStr}</td>
-                              <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{h.sessions.toLocaleString()}</td>
-                              <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{h.organicTraffic.toLocaleString()}</td>
-                              <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{h.conversions.toLocaleString()}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p style={{ textAlign: "center", padding: "20px", color: "var(--text-muted)" }}>No historical logs available for this period.</p>
-                )}
+              <div className={styles.legendPillItem}>
+                <div style={{ width: 12, height: 12, borderRadius: "2px", background: "#2563EB" }} />
+                <span>Organic Sessions</span>
+              </div>
+              <div className={styles.legendPillItem}>
+                <div style={{ width: 10, height: 10, transform: "rotate(45deg)", background: "#F97316" }} />
+                <span>Backlink placed</span>
+              </div>
+              <div className={styles.legendPillItem}>
+                <div style={{ width: 10, height: 10, transform: "rotate(45deg)", background: "#8B5CF6" }} />
+                <span>Content posted</span>
               </div>
             </div>
+
+            {/* Interactive Timeline Spline Chart */}
+            {renderTrafficOverTimeChart()}
           </div>
-        )}
 
-        {/* TAB 3: INTEGRATIONS */}
-        {activeTab === "integrations" && (
-          <div className={styles.workspaceGrid}>
-            {/* GA4 Setup Card */}
-            <div className={styles.mainColumn}>
-              <div className={styles.card}>
-                <h3 className={styles.setupTitle}>Google Analytics 4 Integration</h3>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.45, marginBottom: "20px" }}>
-                  Connect your GA4 Property ID and choose the primary conversion goals to sync active sessions and conversion stats to the portal dashboard.
-                </p>
-
-                {ga4Status === "DISCONNECTED" ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "flex-start" }}>
-                    <button
-                      onClick={handleConnectGA4OAuth}
-                      className={styles.btnActionPrimary}
-                      style={{ cursor: "pointer" }}
-                      disabled={isConnectingGA4}
-                    >
-                      {isConnectingGA4 ? "Redirecting..." : "Connect Google Analytics 4"}
-                    </button>
-                    <small style={{ color: "var(--text-muted)" }}>This will redirect you to Google to authorize access to your Google Analytics data.</small>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSaveGA4Property} className={styles.setupForm}>
-                    <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                      <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>Discovered GA4 Properties</label>
-                      {loadingGa4Props ? (
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                          <div className={styles.spinner} style={{ width: 14, height: 14 }} />
-                          Discovering accessible properties...
-                        </div>
-                      ) : ga4DiscError ? (
-                        <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "8px" }}>
-                          ⚠️ {ga4DiscError}
-                        </div>
-                      ) : discoveredGa4Properties.length === 0 ? (
-                        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "8px" }}>
-                          No properties found in this Google account.
-                        </div>
-                      ) : (
-                        <select
-                          className={styles.formInput}
-                          value={ga4PropId}
-                          onChange={(e) => setGa4PropId(e.target.value)}
-                          style={{ width: "100%", padding: "8px", borderRadius: "4px", background: "var(--bg-input)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
-                        >
-                          <option value="">-- Choose GA4 Property --</option>
-                          {discoveredGa4Properties.map((p) => (
-                            <option key={p.propertyId} value={p.propertyId}>
-                              {p.displayName} ({p.propertyId}) - {p.accountName}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-
-                    <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                      <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>GA4 Property ID (Manual Override)</label>
-                      <input
-                        type="text"
-                        className={styles.formInput}
-                        value={ga4PropId}
-                        onChange={(e) => setGa4PropId(e.target.value)}
-                        placeholder="e.g. 382901847"
-                        required
-                      />
-                      <small>Enter or select the numeric Property ID resolved from your Google Analytics setup panel.</small>
-                    </div>
-
-                    <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                      <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>Conversion Event Filter (Optional)</label>
-                      <input
-                        type="text"
-                        className={styles.formInput}
-                        value={ga4EventName}
-                        onChange={(e) => setGa4EventName(e.target.value)}
-                        placeholder="e.g. purchase, generate_lead"
-                      />
-                      <small style={{ display: "block", marginTop: "4px" }}>Specify a key event name to record under conversions. Defaults to all active conversion events.</small>
-                    </div>
-
-                    <div className={styles.formActions} style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                      <button
-                        type="submit"
-                        className={styles.btnActionPrimary}
-                        style={{ cursor: "pointer" }}
-                        disabled={isConnectingGA4}
-                      >
-                        {isConnectingGA4 ? "Saving..." : "Save GA4 Configuration"}
-                      </button>
-
-                      <button
-                        type="button"
-                        className={styles.btnActionDanger}
-                        style={{ cursor: "pointer" }}
-                        onClick={handleDisconnectGA4}
-                        disabled={isConnectingGA4}
-                      >
-                        Disconnect GA4
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-
-              {/* GBP Setup Card */}
-              <div className={styles.card} id="gbp-setup-card" style={{ marginTop: "24px" }}>
-                <h3 className={styles.setupTitle}>Google Business Profile Integration</h3>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.45, marginBottom: "20px" }}>
-                  Connect your business storefront to pull real-time Maps impressions, website clicks, telephone calls, and local directions.
-                </p>
-
-                {gbpStatus === "DISCONNECTED" ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "flex-start" }}>
-                    <button
-                      onClick={handleConnectGBPOAuth}
-                      className={styles.btnActionPrimary}
-                      style={{ cursor: "pointer" }}
-                      disabled={isConnectingGbp}
-                    >
-                      {isConnectingGbp ? "Redirecting..." : "Connect Google Business Profile"}
-                    </button>
-                    <small style={{ color: "var(--text-muted)" }}>This will redirect you to Google to authorize access to your Google Business listings.</small>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSaveGBPLocation} className={styles.setupForm}>
-                    <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                      <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>Discovered storefront Locations</label>
-                      {loadingGbpLocations ? (
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                          <div className={styles.spinner} style={{ width: 14, height: 14 }} />
-                          Discovering accessible storefronts...
-                        </div>
-                      ) : gbpDiscError ? (
-                        <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "8px" }}>
-                          ⚠️ {gbpDiscError}
-                        </div>
-                      ) : discoveredGbpLocations.length === 0 ? (
-                        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "8px" }}>
-                          No business storefronts found in this Google account.
-                        </div>
-                      ) : (
-                        <select
-                          className={styles.formInput}
-                          value={selectedGbpLocationName}
-                          onChange={(e) => setSelectedGbpLocationName(e.target.value)}
-                          style={{ width: "100%", padding: "8px", borderRadius: "4px", background: "var(--bg-input)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
-                        >
-                          <option value="">-- Choose Storefront Listing --</option>
-                          {discoveredGbpLocations.map((l) => (
-                            <option key={l.name} value={l.name}>
-                              {l.title} ({l.primaryCategory || "No Category"}) - {l.address || "No Address"}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-
-                    {gbpStats && (
-                      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-color)", padding: "12px", borderRadius: "6px", marginBottom: "16px", fontSize: "0.85rem" }}>
-                        <span style={{ color: "var(--text-muted)", display: "block", marginBottom: "4px" }}>Active Mapped Storefront:</span>
-                        <strong>{gbpStats.displayName}</strong> ({gbpStats.primaryCategory || "Local Store"})
-                      </div>
-                    )}
-
-                    <div className={styles.formActions} style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                      <button
-                        type="submit"
-                        className={styles.btnActionPrimary}
-                        style={{ cursor: "pointer" }}
-                        disabled={isConnectingGbp || !selectedGbpLocationName}
-                      >
-                        {isConnectingGbp ? "Mapping..." : "Save GBP Mapping"}
-                      </button>
-
-                      {gbpStats && (
-                        <button
-                          type="button"
-                          className={styles.btnActionDanger}
-                          style={{ cursor: "pointer" }}
-                          onClick={handleDisconnectGBP}
-                          disabled={isConnectingGbp}
-                        >
-                          Disconnect GBP Mapping
-                        </button>
-                      )}
-                    </div>
-                  </form>
-                )}
-              </div>
+          {/* AI REFERRAL TRAFFIC CARD */}
+          <div className={styles.contentCard}>
+            <div className={styles.cardHeaderFlex}>
+              <span className={styles.cardMainTitle}>AI Referral Traffic</span>
+              <span className={styles.cardSubNote}>Sessions from AI/LLM sources</span>
             </div>
 
-            {/* GSC Setup Card */}
-            <div className={styles.sideColumn}>
-              <div className={styles.card}>
-                <h3 className={styles.setupTitle}>Search Console Property</h3>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.45, marginBottom: "20px" }}>
-                  Set up domain ownership validation matching the Search Console property path to fetch keyword impressions and click tracking counts.
-                </p>
-
-                {gscStatus === "DISCONNECTED" ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "flex-start" }}>
-                    <button
-                      onClick={handleConnectGSCOAuth}
-                      className={styles.btnActionPrimary}
-                      style={{ cursor: "pointer" }}
-                      disabled={isConnectingGSC}
-                    >
-                      {isConnectingGSC ? "Redirecting..." : "Connect Google Search Console"}
-                    </button>
-                    <small style={{ color: "var(--text-muted)" }}>This will redirect you to Google to authorize access to your Google Search Console data.</small>
+            {aiReferralTraffic && aiReferralTraffic.totalSessions > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {aiReferralTraffic.sources.map((s, idx) => (
+                  <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #F1F5F9", paddingBottom: "8px" }}>
+                    <span style={{ fontWeight: "600", color: "#0F172A" }}>{s.name}</span>
+                    <span style={{ color: "#475569" }}>{s.sessions.toLocaleString()} sessions ({s.percentage.toFixed(1)}%)</span>
                   </div>
-                ) : (
-                  <form onSubmit={handleSaveGSCSite} className={styles.setupForm}>
-                    {gscDiscError && gscDiscError.toLowerCase().includes("access token") ? (
-                      <div style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.25)", padding: "12px", borderRadius: "6px", marginBottom: "16px" }}>
-                        <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "6px", fontWeight: "600" }}>
-                          ⚠️ Google Search Console Authentication Required
-                        </div>
-                        <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "10px" }}>
-                          An active Google OAuth access token is required to list and query Search Console properties.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handleConnectGSCOAuth}
-                          className={styles.btnActionPrimary}
-                          style={{ fontSize: "0.85rem", padding: "6px 14px", cursor: "pointer" }}
-                          disabled={isConnectingGSC}
-                        >
-                          {isConnectingGSC ? "Redirecting..." : "🔑 Authenticate with Google"}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                        <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>Discovered GSC Properties</label>
-                        {loadingGscSites ? (
-                          <div style={{ display: "flex", gap: "8px", alignItems: "center", fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                            <div className={styles.spinner} style={{ width: 14, height: 14 }} />
-                            Discovering accessible sites...
-                          </div>
-                        ) : gscDiscError ? (
-                          <div style={{ color: "var(--error)", fontSize: "0.85rem", marginBottom: "8px" }}>
-                            ⚠️ {gscDiscError}
-                          </div>
-                        ) : discoveredGscSites.length === 0 ? (
-                          <div style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "8px" }}>
-                            No verified sites found in this Google account.
-                          </div>
-                        ) : (
-                          <select
-                            className={styles.formInput}
-                            value={gscDomainUrl}
-                            onChange={(e) => setGscDomainUrl(e.target.value)}
-                            style={{ width: "100%", padding: "8px", borderRadius: "4px", background: "var(--bg-input)", border: "1px solid var(--border-color)", color: "var(--text-primary)" }}
-                          >
-                            <option value="">-- Choose GSC Site --</option>
-                            {discoveredGscSites.map((s) => (
-                              <option key={s.siteUrl} value={s.siteUrl}>
-                                {s.siteUrl} ({s.permissionLevel})
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    )}
-
-                    <div className={styles.formGroup} style={{ marginBottom: "16px" }}>
-                      <label style={{ display: "block", marginBottom: "6px", fontWeight: "600" }}>GSC Property / Domain URL (Manual Override)</label>
-                      <input
-                        type="text"
-                        className={styles.formInput}
-                        value={gscDomainUrl}
-                        onChange={(e) => setGscDomainUrl(e.target.value)}
-                        placeholder="e.g. sc-domain:example.com or https://example.com"
-                        required
-                      />
-                      <small>Enter or select the verified site property URL prefix or sc-domain prefix.</small>
-                    </div>
-
-                    <div className={styles.formActions} style={{ display: "flex", gap: "12px", marginTop: "32px", flexWrap: "wrap" }}>
-                      <button
-                        type="submit"
-                        className={styles.btnActionPrimary}
-                        style={{ cursor: "pointer" }}
-                        disabled={isConnectingGSC}
-                      >
-                        {isConnectingGSC ? "Saving..." : "Save GSC Configuration"}
-                      </button>
-
-                      <button
-                        type="button"
-                        className={styles.btnActionSecondary}
-                        style={{ cursor: "pointer" }}
-                        onClick={handleConnectGSCOAuth}
-                        disabled={isConnectingGSC}
-                      >
-                        {isConnectingGSC ? "Redirecting..." : "Re-authenticate Google"}
-                      </button>
-
-                      <button
-                        type="button"
-                        className={styles.btnActionDanger}
-                        style={{ cursor: "pointer" }}
-                        onClick={handleDisconnectGSC}
-                        disabled={isConnectingGSC}
-                      >
-                        Disconnect GSC
-                      </button>
-                    </div>
-                  </form>
-                )}
+                ))}
               </div>
-            </div>
+            ) : (
+              <p style={{ color: "#64748B", fontSize: "0.875rem", margin: "8px 0" }}>
+                No AI referral traffic in this period
+              </p>
+            )}
           </div>
-        )}
-
-        {/* TAB 4: ACTIVITY */}
-        {activeTab === "activity" && (
-          <div className={styles.workspaceGrid}>
-            <div className={styles.mainColumn} style={{ flex: "1 1 100%" }}>
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Complete Administrative Audit Timeline</span>
-                {activityLogs && activityLogs.length > 0 ? (
-                  <div className={styles.timelineWrapper}>
-                    {activityLogs.map((log) => {
-                      const meta = getActivityLogMeta(log.action, log.metadata);
-                      const timeStr = new Date(log.createdAt).toLocaleString(undefined, {
-                        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                      });
-                      return (
-                        <div key={log.id} className={styles.fullTimelineItem}>
-                          <div className={`${styles.timelineDot} ${meta.dotClass}`} />
-                          <div className={styles.timelineBody}>
-                            <div className={styles.timelineHeaderRow}>
-                              <strong className={styles.timelineActionName}>{meta.label}</strong>
-                              <span className={styles.timelineTimestamp}>{timeStr}</span>
-                            </div>
-                            <p className={styles.timelineDesc}>{meta.desc}</p>
-                            <span className={styles.timelineActor}>Logged by admin user: {log.actorEmail}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>No operational activities logged for this client profile.</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: SETTINGS */}
-        {activeTab === "settings" && (
-          <div className={styles.workspaceGrid}>
-            {/* Inline fields editor */}
-            <div className={styles.mainColumn}>
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Edit Profile Settings</span>
-                <form onSubmit={handleSaveSettings} className={styles.setupForm}>
-                  <div className={styles.formGroup}>
-                    <label>Account Manager Assignment</label>
-                    <input
-                      type="text"
-                      className={styles.formInput}
-                      value={settingsManager}
-                      onChange={(e) => setSettingsManager(e.target.value)}
-                      placeholder="e.g. Sarah Jenkins"
-                    />
-                  </div>
-
-                  <div className={styles.formGroup}>
-                    <label>Internal Account Notes</label>
-                    <textarea
-                      className={styles.formTextarea}
-                      value={settingsNotes}
-                      onChange={(e) => setSettingsNotes(e.target.value)}
-                      rows={5}
-                      placeholder="Enter special requirements, sync mappings details, or contract limits..."
-                    />
-                  </div>
-
-                  <div className={styles.formActions}>
-                    <button
-                      type="submit"
-                      className={styles.btnActionPrimary}
-                      disabled={isSavingSettings}
-                    >
-                      {isSavingSettings ? "Saving..." : "Save Settings"}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Danger Zone */}
-              <div className={styles.card} style={{ border: "1px solid rgba(239, 68, 68, 0.25)" }}>
-                <span className={styles.cardTitle} style={{ color: "var(--error)" }}>Danger Zone</span>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.45, marginBottom: "20px" }}>
-                  Archiving a client soft-deletes the record. Their metrics will be excluded from the admin dashboard and portfolios, but configurations are preserved and can be restored.
-                </p>
-
-                <div style={{ display: "flex", gap: "16px" }}>
-                  {client.isArchived ? (
-                    <button
-                      className={styles.btnActionPrimary}
-                      onClick={handleRestoreClient}
-                    >
-                      <RotateCcw size={14} style={{ marginRight: "6px" }} />
-                      Restore Client Account
-                    </button>
-                  ) : (
-                    <button
-                      className={styles.btnActionDanger}
-                      onClick={handleArchiveClient}
-                    >
-                      <Archive size={14} style={{ marginRight: "6px" }} />
-                      Archive Client Account
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Sharing Setup Card */}
-            <div className={styles.sideColumn}>
-              <div className={styles.card}>
-                <span className={styles.cardTitle}>Reporting Portal Link</span>
-                <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", lineHeight: 1.45, marginBottom: "20px" }}>
-                  This secure, read-only URL allows clients to view their organic sessions and SEO placements without needing administrator auth credentials.
-                </p>
-
-                <div className={styles.shareCardBox}>
-                  <div className={styles.shareDisplayBox}>
-                    {client.shareToken ? `${window.location.origin}/share/${client.shareToken}` : "No token set"}
-                  </div>
-
-                  <div style={{ display: "flex", gap: "8px", marginTop: "12px", width: "100%" }}>
-                    <button
-                      onClick={handleCopyLink}
-                      className={styles.btnActionSecondary}
-                      style={{ flex: 1 }}
-                      disabled={!client.shareToken}
-                    >
-                      {copiedLink ? <Check size={14} style={{ color: "var(--success)" }} /> : <Copy size={14} />}
-                      {copiedLink ? "Copied" : "Copy Link"}
-                    </button>
-                    <button
-                      onClick={handleRegenerateToken}
-                      className={styles.btnActionSecondary}
-                      title="Regenerate Share link"
-                      disabled={isRegenerating || !client.shareToken}
-                    >
-                      <RefreshCw size={13} className={isRegenerating ? "spin" : ""} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Edit Client modal */}
-      {isEditModalOpen && (
-        <ClientModal
-          clientId={client.id}
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onSuccess={() => {
-            setIsEditModalOpen(false);
-            fetchWorkspace();
-          }}
-        />
+        </div>
       )}
+
+      {/* ============================================================= */}
+      {/* TAB 2: CHANNELS */}
+      {/* ============================================================= */}
+      {activeTab === "channels" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* SESSIONS BY CHANNEL STRIP */}
+          <div className={styles.contentCard}>
+            <div className={styles.cardHeaderFlex} style={{ marginBottom: "8px" }}>
+              <span className={styles.cardMainTitle}>Sessions by Channel</span>
+            </div>
+
+            <div className={styles.channelGridRow}>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Organic Search</span>
+                <span className={styles.channelValText}>{(channels?.organicSearch ?? 0).toLocaleString()}</span>
+              </div>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Direct</span>
+                <span className={styles.channelValText}>{(channels?.direct ?? 0).toLocaleString()}</span>
+              </div>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Referral</span>
+                <span className={styles.channelValText}>{(channels?.referral ?? 0).toLocaleString()}</span>
+              </div>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Paid Search</span>
+                <span className={styles.channelValText}>{(channels?.paidSearch ?? 0).toLocaleString()}</span>
+              </div>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Social</span>
+                <span className={styles.channelValText}>{(channels?.social ?? 0).toLocaleString()}</span>
+              </div>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Email</span>
+                <span className={styles.channelValText}>{(channels?.email ?? 0).toLocaleString()}</span>
+              </div>
+              <div className={styles.channelGridCol}>
+                <span className={styles.channelLabelText}>Other</span>
+                <span className={styles.channelValText}>{(channels?.other ?? 0).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CHANNEL DISTRIBUTION DONUT CHART */}
+          <div className={styles.contentCard}>
+            <div className={styles.cardHeaderFlex}>
+              <span className={styles.cardMainTitle}>Channel Distribution</span>
+            </div>
+
+            {renderChannelDonutChart()}
+          </div>
+        </div>
+      )}
+
+      {/* EDIT / INTEGRATIONS / SETTINGS MODAL */}
+      <ClientModal
+        clientId={client.id}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={() => {
+          setIsEditModalOpen(false);
+          fetchWorkspace();
+        }}
+      />
     </div>
   );
 }
