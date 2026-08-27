@@ -31,6 +31,9 @@ import {
   ContentItem,
   ContentBrief,
   ContentDraft,
+  PageTemplate,
+  ContentEntity,
+  ContentSettings,
 } from "@prisma/client";
 
 // Define composite types with relations
@@ -45,7 +48,9 @@ export type ClientWithRelations = Client & {
   prCampaigns?: PrCampaignWithRelations[];
   linkCampaigns?: LinkCampaignWithRelations[];
   trackedKeywords?: TrackedKeywordWithRelations[];
+  contentItems?: ContentItemWithRelations[];
 };
+
 
 export type WebsitePropertyWithRelations = WebsiteProperty & {
   client?: ClientWithRelations | null;
@@ -205,6 +210,9 @@ export const gbpLocationCol = createModel<GbpLocationWithRelations>("gbpLocation
 export const contentBriefCol = createModel<ContentBrief>("contentBriefs");
 export const contentDraftCol = createModel<ContentDraft>("contentDrafts");
 export const contentItemCol = createModel<ContentItemWithRelations>("contentItems", attachContentItemRelations);
+export const pageTemplateCol = createModel<PageTemplate>("pageTemplates");
+export const contentEntityCol = createModel<ContentEntity>("contentEntities");
+export const contentSettingsCol = createModel<ContentSettings>("contentSettings");
 export const reportCol = createModel<ReportWithRelations>("reports", attachReportRelations);
 
 type IncludeConfig = Record<string, unknown>;
@@ -248,6 +256,9 @@ async function attachClientRelations(client: ClientWithRelations, include: Inclu
   }
   if (include.trackedKeywords) {
     client.trackedKeywords = await trackedKeywordCol.findMany({ where: { clientId: client.id } });
+  }
+  if (include.contentItems) {
+    client.contentItems = await contentItemCol.findMany({ where: { clientId: client.id } });
   }
   return client;
 }
@@ -516,6 +527,9 @@ const basePrisma = {
   contentItem: contentItemCol,
   contentBrief: contentBriefCol,
   contentDraft: contentDraftCol,
+  pageTemplate: pageTemplateCol,
+  contentEntity: contentEntityCol,
+  contentSettings: contentSettingsCol,
 };
 
 export type DatabaseClient = typeof basePrisma & {
