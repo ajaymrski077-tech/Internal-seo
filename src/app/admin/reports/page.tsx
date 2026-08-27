@@ -4,664 +4,242 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
-  FileText,
   Search,
-  Plus,
-  MoreVertical,
-  Download,
-  Share2,
-  Trash2,
-  Calendar,
   ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   AlertCircle,
-  Check,
-  RefreshCw,
-  Copy,
-  Filter,
-  Link as LinkIcon,
-  X
+  Archive,
+  RefreshCw
 } from "lucide-react";
 import styles from "@/styles/Reports.module.css";
-import { useToast } from "@/components/ToastContext";
-import { useConfirm } from "@/components/ConfirmContext";
-import { handleApiError } from "@/lib/apiUtils";
 
-interface ClientOption {
-  id: number;
+interface ClientReportSummary {
+  id: string;
   name: string;
-  companyName: string | null;
-  properties: Array<{ id: number; domain: string }>;
+  domain: string;
+  totalReports: number;
+  mostRecentReport: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+  } | null;
 }
 
-interface ReportListItem {
-  id: number;
-  name: string;
-  clientId: number;
-  propertyId: number | null;
-  dateRange: string;
-  startDate: string;
-  endDate: string;
-  comparisonRange: string;
-  status: string;
-  shareToken: string | null;
-  createdAt: string;
-  client: { id: number; name: string; companyName: string | null };
-  property: { id: number; domain: string; name: string } | null;
-}
-
-export default function ReportsPage() {
+export default function ReportsDirectoryPage() {
   const router = useRouter();
-  const { toast, success, error } = useToast();
-  const { confirm } = useConfirm();
-
-  // Search & Filter States
-  const [search, setSearch] = useState("");
-  const [selectedClientFilter, setSelectedClientFilter] = useState("ALL");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState("ALL");
-  const [selectedSort, setSelectedSort] = useState("newest");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Loaded Data States
-  const [reports, setReports] = useState<ReportListItem[]>([]);
-  const [totalReports, setTotalReports] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [clients, setClients] = useState<ClientReportSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pageError, setPageError] = useState("");
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
 
-  // Create Modal Form States
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formClientId, setFormClientId] = useState("");
-  const [formPropertyId, setFormPropertyId] = useState("");
-  const [formReportName, setFormReportName] = useState("");
-  const [formDateRange, setFormDateRange] = useState("30d");
-  const [formCustomStart, setFormCustomStart] = useState("");
-  const [formCustomEnd, setFormCustomEnd] = useState("");
-  const [formComparison, setFormComparison] = useState("PREV_PERIOD");
-  const [formSections, setFormSections] = useState<string[]>([
-    "overview",
-    "sessions",
-    "organic",
-    "conversions",
-    "deliveries"
-  ]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Active Dropdown state (which report action popup is open)
-  const [activeDropdownReportId, setActiveDropdownReportId] = useState<number | null>(null);
-  const [copiedReportId, setCopiedReportId] = useState<number | null>(null);
-
-  // Fetch paginated reports list
-  const fetchReports = useCallback(async () => {
+  const fetchClientsSummary = useCallback(async () => {
     setLoading(true);
-    setPageError("");
+    setError("");
     try {
-      const clientQuery = selectedClientFilter !== "ALL" ? `&clientId=${selectedClientFilter}` : "";
-      const statusQuery = selectedStatusFilter !== "ALL" ? `&status=${selectedStatusFilter}` : "";
-      const searchQuery = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : "";
-      
-      const res = await fetch(
-        `/api/reports?page=${currentPage}&pageSize=8&sort=${selectedSort}${clientQuery}${statusQuery}${searchQuery}`
-      );
-      if (!res.ok) throw new Error("Failed to load reports.");
+      const res = await fetch(`/api/reports/clients-summary?search=${encodeURIComponent(search)}&archived=${showArchived}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          router.push("/login");
+          return;
+        }
+        throw new Error("Failed to load reports summary.");
+      }
       const data = await res.json();
-      setReports(data.reports);
-      setTotalReports(data.totalCount);
-      setTotalPages(data.totalPages);
+      setClients(data.clients || []);
     } catch (err: unknown) {
       const errObj = err as Error;
-      setPageError(errObj?.message || "Failed to load reports ledger.");
+      console.error(err);
+      setError(errObj?.message || "Error loading reports list.");
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedClientFilter, selectedStatusFilter, search, selectedSort]);
-
-  // Load clients options for creation modal and filters
-  const fetchClients = useCallback(async () => {
-    try {
-      const res = await fetch("/api/clients?pageSize=100");
-      if (res.ok) {
-        const data = await res.json();
-        setClients(data.clients || []);
-      }
-    } catch (err) {
-      console.error("Failed to load clients options:", err);
-    }
-  }, []);
+  }, [search, showArchived, router]);
 
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
-
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
-  // Document listener to close dropdowns
-  useEffect(() => {
-    const handleOutsideClick = () => {
-      setActiveDropdownReportId(null);
-    };
-    window.addEventListener("click", handleOutsideClick);
-    return () => window.removeEventListener("click", handleOutsideClick);
-  }, []);
-
-  // Sync default report name when client changes
-  useEffect(() => {
-    if (formClientId) {
-      const client = clients.find(c => c.id === parseInt(formClientId, 10));
-      if (client) {
-        const now = new Date();
-        const monthName = now.toLocaleString("default", { month: "long" });
-        const year = now.getFullYear();
-        setFormReportName(`${client.name} - ${monthName} ${year} SEO Report`);
-        
-        // Auto-select first property if any
-        if (client.properties && client.properties.length > 0) {
-          setFormPropertyId(client.properties[0].id.toString());
-        } else {
-          setFormPropertyId("");
-        }
-      }
-    } else {
-      setFormReportName("");
-      setFormPropertyId("");
-    }
-  }, [formClientId, clients]);
-
-  // Create report handler
-  const handleCreateReport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formClientId || !formReportName.trim()) {
-      error("Please select a client and provide a report name.");
-      return;
-    }
-    if (formDateRange === "custom" && (!formCustomStart || !formCustomEnd)) {
-      error("Please provide start and end dates for the custom range.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const payload = {
-        clientId: parseInt(formClientId, 10),
-        propertyId: formPropertyId ? parseInt(formPropertyId, 10) : null,
-        name: formReportName.trim(),
-        dateRange: formDateRange,
-        startDate: formDateRange === "custom" ? new Date(formCustomStart) : undefined,
-        endDate: formDateRange === "custom" ? new Date(formCustomEnd) : undefined,
-        comparisonRange: formComparison,
-        sections: formSections
-      };
-
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Failed to create report.");
-      }
-
-      const resData = await res.json();
-      setIsModalOpen(false);
-      success("Report record created and snapshot generation started!");
-      router.push(`/admin/reports/${resData.reportId}`);
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error }, fallbackMessage: "Failed to create report." });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Section toggle handler
-  const handleToggleSection = (section: string) => {
-    if (formSections.includes(section)) {
-      setFormSections(formSections.filter(s => s !== section));
-    } else {
-      setFormSections([...formSections, section]);
-    }
-  };
-
-  // Copy secure share link
-  const handleCopyLink = async (e: React.MouseEvent, shareToken: string | null, id: number) => {
-    e.stopPropagation();
-    if (!shareToken) return;
-    const origin = window.location.origin;
-    const shareUrl = `${origin}/share/reports/${shareToken}`;
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopiedReportId(id);
-      setTimeout(() => setCopiedReportId(null), 2000);
-      success("Link copied to clipboard");
-    } catch {
-      error("Failed to copy link.");
-    }
-  };
-
-  // Archive report action
-  const handleArchiveReport = async (e: React.MouseEvent, id: number, name: string) => {
-    e.stopPropagation();
-    const isConfirmed = await confirm({
-      title: "Archive Report",
-      message: `Are you sure you want to archive "${name}"?`,
-      confirmText: "Archive",
-      destructive: true
-    });
-    if (!isConfirmed) return;
-
-    try {
-      const res = await fetch(`/api/reports/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to archive report.");
-      success("Report archived successfully.");
-      fetchReports();
-    } catch (err: unknown) {
-      handleApiError(err, { toast: { error }, fallbackMessage: "Failed to archive report." });
-    }
-  };
-
-  // Format date range text helper
-  const formatDateRangeText = (report: ReportListItem) => {
-    const start = new Date(report.startDate);
-    const end = new Date(report.endDate);
-    const startStr = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    const endStr = end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    return `${startStr} – ${endStr}`;
-  };
-
-  // Slided window pagination logic
-  const getPageNumbers = () => {
-    const pages = [];
-    const maxVisible = 5;
-    let start = Math.max(1, currentPage - 2);
-    const end = Math.min(totalPages, start + maxVisible - 1);
-    
-    if (end - start < maxVisible - 1) {
-      start = Math.max(1, end - maxVisible + 1);
-    }
-    
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    return pages;
-  };
+    fetchClientsSummary();
+  }, [fetchClientsSummary]);
 
   return (
     <div className={styles.container}>
-      {/* Page Header */}
+      {/* 1. PAGE HEADER */}
       <div className={styles.headerRow}>
         <div className={styles.titleArea}>
-          <h1 className={styles.title}>Client Performance Reports</h1>
-          <p className={styles.subtitle}>Create, manage, and share print-ready client analytics snapshots</p>
+          <h1 className={styles.title}>Reports</h1>
+          <p className={styles.subtitle}>Manage monthly SEO reports for clients</p>
         </div>
-        
-        <button 
-          onClick={() => {
-            setFormClientId("");
-            setFormPropertyId("");
-            setFormReportName("");
-            setIsModalOpen(true);
-          }}
-          className={styles.btnActionPrimary}
-        >
-          <Plus size={14} style={{ marginRight: "6px" }} />
-          Create Report
-        </button>
+
+        <div>
+          <button
+            className={`${styles.btnActionSecondary} ${showArchived ? styles.activeArchivedBtn : ""}`}
+            onClick={() => setShowArchived(!showArchived)}
+            style={{ fontSize: "0.8125rem", padding: "8px 16px", borderRadius: "6px" }}
+          >
+            <Archive size={14} />
+            {showArchived ? "Hide archived" : "Show archived"}
+          </button>
+        </div>
       </div>
 
-      {/* Filters ledger bar */}
-      <div className={styles.filterBar}>
-        <div className={styles.searchWrapper}>
-          <Search size={14} className={styles.searchIcon} />
+      {/* 2. SEARCH BAR & CLIENTS COUNT */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+        <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
+          <Search
+            size={16}
+            style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8" }}
+          />
           <input
             type="text"
-            placeholder="Search reports by name, client, website..."
+            placeholder="Search clients..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            className={styles.searchInput}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "9px 12px 9px 36px",
+              fontSize: "0.875rem",
+              borderRadius: "8px",
+              border: "1px solid #E2E8F0",
+              background: "#FFFFFF",
+              color: "#0F172A",
+              outline: "none"
+            }}
           />
         </div>
 
-        <div className={styles.filtersGroup}>
-          <div className={styles.selectWrapper}>
-            <select
-              value={selectedClientFilter}
-              onChange={(e) => { setSelectedClientFilter(e.target.value); setCurrentPage(1); }}
-              className={styles.filterSelect}
-            >
-              <option value="ALL">All Clients</option>
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className={styles.selectWrapper}>
-            <select
-              value={selectedStatusFilter}
-              onChange={(e) => { setSelectedStatusFilter(e.target.value); setCurrentPage(1); }}
-              className={styles.filterSelect}
-            >
-              <option value="ALL">All Statuses</option>
-              <option value="DRAFT">Draft</option>
-              <option value="GENERATING">Generating</option>
-              <option value="READY">Ready</option>
-              <option value="FAILED">Failed</option>
-            </select>
-          </div>
-
-          <div className={styles.selectWrapper}>
-            <select
-              value={selectedSort}
-              onChange={(e) => { setSelectedSort(e.target.value); setCurrentPage(1); }}
-              className={styles.filterSelect}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="updated">Recently Updated</option>
-              <option value="client_name">Client Name</option>
-              <option value="report_name">Report Name</option>
-            </select>
-          </div>
+        <div style={{ fontSize: "0.8125rem", color: "#64748B", fontWeight: "500" }}>
+          {clients.length} {clients.length === 1 ? "client" : "clients"}
         </div>
       </div>
 
-      {/* Reports Table container */}
-      {loading ? (
-        <div className={styles.loaderArea}>
-          <div className={styles.spinner} />
+      {/* 3. CLIENTS REPORTS TABLE */}
+      {loading && clients.length === 0 ? (
+        <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}>
+          <RefreshCw className={styles.spinner} size={28} />
         </div>
-      ) : pageError ? (
-        <div className={styles.errorArea}>
-          <AlertCircle size={24} style={{ color: "var(--error)" }} />
-          <p>{pageError}</p>
+      ) : error ? (
+        <div className={styles.errorCard} style={{ background: "#FFFFFF", padding: "32px", borderRadius: "12px", border: "1px solid #E2E8F0", textAlign: "center" }}>
+          <AlertCircle size={32} style={{ color: "#EF4444", margin: "0 auto 12px auto" }} />
+          <h3 style={{ fontSize: "1rem", fontWeight: "700", color: "#0F172A" }}>Unable to load reports</h3>
+          <p style={{ fontSize: "0.875rem", color: "#64748B", marginBottom: "16px" }}>{error}</p>
+          <button className={styles.btnActionSecondary} onClick={() => fetchClientsSummary()}>
+            Try Again
+          </button>
         </div>
-      ) : reports.length === 0 ? (
-        <div className={styles.emptyArea}>
-          <FileText size={48} className={styles.emptyIcon} />
-          <h3>No Reports Configured</h3>
-          <p>{search ? "No reports match your filters." : "Create your first client performance report to get started."}</p>
-          {!search && (
-            <button onClick={() => setIsModalOpen(true)} className={styles.btnActionPrimary} style={{ marginTop: "12px" }}>
-              <Plus size={14} style={{ marginRight: "6px" }} />
-              Create First Report
-            </button>
-          )}
+      ) : clients.length === 0 ? (
+        <div style={{ background: "#FFFFFF", padding: "48px 24px", borderRadius: "12px", border: "1px solid #E2E8F0", textAlign: "center" }}>
+          <p style={{ color: "#64748B", fontSize: "0.9375rem" }}>
+            {search ? `No clients found matching "${search}"` : "No clients configured yet."}
+          </p>
         </div>
       ) : (
-        <div className={styles.card}>
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Report Name</th>
-                  <th>Client</th>
-                  <th>Domain</th>
-                  <th>Reporting Period</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id}>
-                    <td>
-                      <Link href={`/admin/reports/${report.id}`} className={styles.reportNameLink}>
-                        {report.name}
-                      </Link>
-                    </td>
-                    <td>
-                      <span className={styles.clientName}>{report.client.name}</span>
-                      {report.client.companyName && (
-                        <small className={styles.companyName}>{report.client.companyName}</small>
-                      )}
-                    </td>
-                    <td>
-                      {report.property ? (
-                        <a 
-                          href={`https://${report.property.domain}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className={styles.domainLink}
+        <div style={{ background: "#FFFFFF", borderRadius: "12px", border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <thead>
+              <tr style={{ background: "#F8FAFC", borderBottom: "1px solid #E2E8F0" }}>
+                <th style={{ padding: "14px 24px", fontSize: "0.75rem", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  CLIENT
+                </th>
+                <th style={{ padding: "14px 20px", fontSize: "0.75rem", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  TOTAL REPORTS
+                </th>
+                <th style={{ padding: "14px 20px", fontSize: "0.75rem", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  MOST RECENT REPORT
+                </th>
+                <th style={{ padding: "14px 24px", fontSize: "0.75rem", fontWeight: "700", color: "#64748B", textTransform: "uppercase", letterSpacing: "0.5px", textAlign: "right" }}>
+                  ACTIONS
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map((c) => {
+                const recentMonth = c.mostRecentReport
+                  ? new Date(c.mostRecentReport.startDate).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+                  : "—";
+                const createdDate = c.mostRecentReport
+                  ? `Created ${new Date(c.mostRecentReport.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`
+                  : "";
+
+                return (
+                  <tr
+                    key={c.id}
+                    style={{ borderBottom: "1px solid #F1F5F9", transition: "background 0.15s ease" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#F8FAFC")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <td style={{ padding: "18px 24px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                        <Link
+                          href={`/admin/reports/${c.id}`}
+                          style={{ fontSize: "0.9375rem", fontWeight: "600", color: "#0F172A", textDecoration: "none" }}
                         >
-                          {report.property.domain}
-                          <ExternalLink size={10} style={{ marginLeft: "4px", opacity: 0.5 }} />
+                          {c.name}
+                        </Link>
+                        <a
+                          href={`https://${c.domain}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: "0.775rem", color: "#64748B", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                        >
+                          https://{c.domain}/
                         </a>
-                      ) : (
-                        <span className={styles.unassigned}>All properties</span>
-                      )}
+                      </div>
                     </td>
-                    <td>
-                      <span className={styles.periodText}>
-                        <Calendar size={12} style={{ marginRight: "6px", opacity: 0.7 }} />
-                        {formatDateRangeText(report)}
+
+                    <td style={{ padding: "18px 20px" }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "4px 10px",
+                          borderRadius: "9999px",
+                          background: "#F1F5F9",
+                          fontSize: "0.8125rem",
+                          fontWeight: "500",
+                          color: "#334155"
+                        }}
+                      >
+                        {c.totalReports} {c.totalReports === 1 ? "report" : "reports"}
                       </span>
                     </td>
-                    <td>
-                      <span className={`${styles.statusBadge} ${styles[report.status.toLowerCase()]}`}>
-                        {report.status}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <div style={{ position: "relative", display: "inline-block" }}>
-                        <button
-                          className={styles.btnIconAction}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveDropdownReportId(
-                              activeDropdownReportId === report.id ? null : report.id
-                            );
-                          }}
-                        >
-                          <MoreVertical size={14} />
-                        </button>
-                        {activeDropdownReportId === report.id && (
-                          <div 
-                            className={styles.actionsDropdown}
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Link href={`/admin/reports/${report.id}`}>
-                              <FileText size={12} />
-                              View Report
-                            </Link>
-                            <button onClick={(e) => handleCopyLink(e, report.shareToken, report.id)}>
-                              {copiedReportId === report.id ? <Check size={12} style={{ color: "var(--success)" }} /> : <Share2 size={12} />}
-                              {copiedReportId === report.id ? "Copied shared Link" : "Copy Shared Link"}
-                            </button>
-                            <button onClick={(e) => handleArchiveReport(e, report.id, report.name)} style={{ color: "var(--error)" }}>
-                              <Trash2 size={12} />
-                              Archive Report
-                            </button>
-                          </div>
+
+                    <td style={{ padding: "18px 20px" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                        <span style={{ fontSize: "0.875rem", fontWeight: "600", color: "#0F172A" }}>
+                          {recentMonth}
+                        </span>
+                        {createdDate && (
+                          <span style={{ fontSize: "0.75rem", color: "#94A3B8" }}>
+                            {createdDate}
+                          </span>
                         )}
                       </div>
                     </td>
+
+                    <td style={{ padding: "18px 24px", textAlign: "right" }}>
+                      <Link
+                        href={`/admin/reports/${c.id}`}
+                        style={{
+                          display: "inline-block",
+                          padding: "6px 14px",
+                          fontSize: "0.8125rem",
+                          fontWeight: "600",
+                          color: "#0F172A",
+                          background: "#FFFFFF",
+                          border: "1px solid #E2E8F0",
+                          borderRadius: "6px",
+                          textDecoration: "none",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        Manage Reports
+                      </Link>
+                    </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Sliding Window Pagination block */}
-          {totalPages > 1 && (
-            <div className={styles.paginationBar}>
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(currentPage - 1)}
-                className={styles.btnPaginationArrow}
-              >
-                <ChevronLeft size={14} />
-              </button>
-              
-              {getPageNumbers().map(p => (
-                <button
-                  key={p}
-                  onClick={() => setCurrentPage(p)}
-                  className={`${styles.paginationNumber} ${currentPage === p ? styles.paginationActive : ""}`}
-                >
-                  {p}
-                </button>
-              ))}
-
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(currentPage + 1)}
-                className={styles.btnPaginationArrow}
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Create Modal Form overlay */}
-      {isModalOpen && (
-        <div className={styles.modalOverlay} onClick={() => setIsModalOpen(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <h3 className={styles.modalTitle}>Create Performance Report</h3>
-            <form onSubmit={handleCreateReport} className={styles.modalForm}>
-              
-              <div className={styles.formGroup}>
-                <label>Select Target Client</label>
-                <select
-                  required
-                  value={formClientId}
-                  onChange={(e) => setFormClientId(e.target.value)}
-                  className={styles.formInput}
-                >
-                  <option value="">-- Choose client profile --</option>
-                  {clients.filter(c => !c.properties || c.properties.length > 0).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {formClientId && (
-                <div className={styles.formGroup}>
-                  <label>Select Website Property</label>
-                  <select
-                    value={formPropertyId}
-                    onChange={(e) => setFormPropertyId(e.target.value)}
-                    className={styles.formInput}
-                  >
-                    <option value="">All properties / Aggregated</option>
-                    {clients.find(c => c.id === parseInt(formClientId, 10))?.properties.map(p => (
-                      <option key={p.id} value={p.id}>{p.domain}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className={styles.formGroup}>
-                <label>Report Name / Title</label>
-                <input
-                  type="text"
-                  required
-                  value={formReportName}
-                  onChange={(e) => setFormReportName(e.target.value)}
-                  placeholder="e.g. Acme Corp - July 2026 SEO Report"
-                  className={styles.formInput}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Reporting Time Range</label>
-                <select
-                  value={formDateRange}
-                  onChange={(e) => setFormDateRange(e.target.value)}
-                  className={styles.formInput}
-                >
-                  <option value="7d">Last 7 days</option>
-                  <option value="30d">Last 30 days</option>
-                  <option value="90d">Last 90 days</option>
-                  <option value="1y">Last Year</option>
-                  <option value="custom">Custom Date Range</option>
-                </select>
-              </div>
-
-              {formDateRange === "custom" && (
-                <div className={styles.formDateRow}>
-                  <div className={styles.formGroup}>
-                    <label>Start Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={formCustomStart}
-                      onChange={(e) => setFormCustomStart(e.target.value)}
-                      className={styles.formInput}
-                    />
-                  </div>
-                  <div className={styles.formGroup}>
-                    <label>End Date</label>
-                    <input
-                      type="date"
-                      required
-                      value={formCustomEnd}
-                      onChange={(e) => setFormCustomEnd(e.target.value)}
-                      className={styles.formInput}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className={styles.formGroup}>
-                <label>Comparison Period</label>
-                <select
-                  value={formComparison}
-                  onChange={(e) => setFormComparison(e.target.value)}
-                  className={styles.formInput}
-                >
-                  <option value="PREV_PERIOD">Previous Equivalent Period (Delta)</option>
-                  <option value="NONE">No Comparison</option>
-                </select>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Include Report Sections</label>
-                <div className={styles.checkboxGroup}>
-                  {[
-                    { id: "overview", label: "Executive Summary Metrics" },
-                    { id: "sessions", label: "Organic Sessions (GA4)" },
-                    { id: "organic", label: "Search Console Clicks (GSC)" },
-                    { id: "conversions", label: "Conversions & Goal Metrics" },
-                    { id: "deliveries", label: "Completed SEO Deliveries" }
-                  ].map((s) => (
-                    <label key={s.id} className={styles.checkboxLabel}>
-                      <input
-                        type="checkbox"
-                        checked={formSections.includes(s.id)}
-                        onChange={() => handleToggleSection(s.id)}
-                      />
-                      {s.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.btnActionSecondary}
-                  onClick={() => setIsModalOpen(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={styles.btnActionPrimary}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Generating snapshot..." : "Create & Generate"}
-                </button>
-              </div>
-            </form>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

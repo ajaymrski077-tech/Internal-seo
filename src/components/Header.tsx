@@ -127,15 +127,20 @@ export default function Header() {
 
         {/* Desktop Nav */}
         <nav className={styles.navList}>
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`${styles.navLink} ${pathname === link.href ? styles.active : ""}`}
-            >
-              {link.name}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = link.href === "/admin"
+              ? pathname === "/admin"
+              : pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`${styles.navLink} ${isActive ? styles.active : ""}`}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
 
 
           <div className={styles.dropdown}>

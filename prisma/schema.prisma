@@ -154,6 +154,11 @@ model Report {
   comparisonRange String           // "PREV_PERIOD", "PREV_YEAR", "NONE"
   status          String           @default("DRAFT") // DRAFT, GENERATING, READY, FAILED, ARCHIVED
   sections        String           // JSON array, e.g. '["overview","sessions","organic","conversions","deliveries"]'
+  summary         String?          // Rich text / markdown summary & notes
+  nextMonthPlans  String?          // Rich text / markdown plans for next month
+  emailStatus     String?          // READY, DRAFT, SENT
+  emailSentAt     DateTime?
+  emailSentTo     String?
   shareToken      String?          @unique
   isArchived      Boolean          @default(false)
   createdAt       DateTime         @default(now())

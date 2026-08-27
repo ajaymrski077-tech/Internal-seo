@@ -494,7 +494,7 @@ export const getSharedReportDetails = async (shareToken: string) => {
     where: { shareToken, isArchived: false },
     include: {
       client: {
-        select: { name: true, companyName: true, logoUrl: true },
+        select: { id: true, name: true, companyName: true, logoUrl: true },
       },
       property: {
         select: { domain: true, name: true },
@@ -506,5 +506,215 @@ export const getSharedReportDetails = async (shareToken: string) => {
     },
   });
 
-  return report;
+  if (!report) return null;
+
+  // Also fetch all previous reports for this client to populate sidebar
+  const previousReports = await db.report.findMany({
+    where: { clientId: report.clientId, isArchived: false },
+    orderBy: { startDate: "desc" },
+    select: {
+      id: true,
+      name: true,
+      startDate: true,
+      endDate: true,
+      shareToken: true,
+    },
+  });
+
+  return {
+    ...report,
+    previousReports,
+  };
 };
+
+// 10. Get clients reports summary for main /admin/reports directory view
+export const getClientsReportsSummary = async (search?: string, showArchived: boolean = false) => {
+  const whereClient: Record<string, unknown> = {
+    isArchived: showArchived,
+  };
+
+  if (search && search.trim()) {
+    whereClient.OR = [
+      { name: { contains: search } },
+      { properties: { some: { domain: { contains: search } } } },
+    ];
+  }
+
+  const clients = await db.client.findMany({
+    where: whereClient,
+    include: {
+      properties: {
+        take: 1,
+        select: { id: true, domain: true },
+      },
+      reports: {
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          startDate: true,
+          endDate: true,
+          createdAt: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: { name: "asc" },
+  });
+
+  return clients.map((c) => {
+    const totalReports = c.reports.length;
+    const mostRecent = c.reports[0] || null;
+    return {
+      id: c.id,
+      name: c.name,
+      domain: c.properties[0]?.domain || "example.com",
+      totalReports,
+      mostRecentReport: mostRecent
+        ? {
+            id: mostRecent.id,
+            name: mostRecent.name,
+            startDate: mostRecent.startDate,
+            endDate: mostRecent.endDate,
+            createdAt: mostRecent.createdAt,
+          }
+        : null,
+    };
+  });
+};
+
+// 11. Get Client Reports Management Workspace for /admin/reports/[clientId]
+export const getClientReportsWorkspace = async (clientId: string) => {
+  const client = await db.client.findUnique({
+    where: { id: clientId },
+    include: {
+      properties: {
+        take: 1,
+        select: { id: true, domain: true },
+      },
+    },
+  });
+
+  if (!client) throw new Error("Client not found.");
+
+  // Fetch all reports for this client
+  const reports = await db.report.findMany({
+    where: { clientId },
+    include: {
+      snapshots: {
+        orderBy: { generatedAt: "desc" },
+        take: 1,
+      },
+    },
+    orderBy: { startDate: "desc" },
+  });
+
+  // Fetch all deliveries to compute all-time counts
+  const allDeliveries = await db.deliveryEvent.findMany({
+    where: { clientId },
+  });
+
+  const backlinksCount = allDeliveries.filter((d) => d.type === "BACKLINK").length;
+  const contentCount = allDeliveries.filter((d) => d.type === "CONTENT").length;
+
+  // Process reports ledger items
+  const reportsLedger = reports.map((r) => {
+    let metrics = {
+      sessions: 0,
+      sessionsChange: 0,
+      organicTraffic: 0,
+      organicTrafficChange: 0,
+      conversions: 0,
+    };
+    let deliveriesList: Array<{ type: string }> = [];
+
+    if (r.snapshots[0]) {
+      try {
+        metrics = JSON.parse(r.snapshots[0].metricsJson || "{}");
+      } catch {}
+      try {
+        deliveriesList = JSON.parse(r.snapshots[0].deliveriesJson || "[]");
+      } catch {}
+    }
+
+    const repBacklinks = deliveriesList.filter((d) => d.type === "BACKLINK").length;
+    const repContent = deliveriesList.filter((d) => d.type === "CONTENT").length;
+
+    return {
+      id: r.id,
+      name: r.name,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      status: r.status,
+      shareToken: r.shareToken,
+      isArchived: r.isArchived,
+      createdAt: r.createdAt,
+      sessions: metrics.sessions || 0,
+      sessionsChange: metrics.sessionsChange || 0,
+      organicTraffic: metrics.organicTraffic || 0,
+      organicTrafficChange: metrics.organicTrafficChange || 0,
+      conversions: metrics.conversions || 0,
+      backlinksCount: repBacklinks,
+      contentCount: repContent,
+    };
+  });
+
+  const latestReport = reportsLedger[0] || null;
+
+  return {
+    client: {
+      id: client.id,
+      name: client.name,
+      companyName: client.companyName,
+      domain: client.properties[0]?.domain || "example.com",
+      createdAt: client.createdAt,
+    },
+    kpis: {
+      totalReports: reports.length,
+      sinceDate: client.createdAt,
+      latestSessions: latestReport?.sessions ?? 0,
+      latestOrganic: latestReport?.organicTraffic ?? 0,
+      latestMonth: latestReport ? new Date(latestReport.startDate).toLocaleDateString(undefined, { month: "short", year: "numeric" }) : "—",
+      backlinksPlaced: backlinksCount,
+      contentPublished: contentCount,
+    },
+    reports: reportsLedger,
+  };
+};
+
+// 12. Save full report details (from edit view)
+export const saveReportDetails = async (
+  reportId: string,
+  data: {
+    startDate?: Date;
+    endDate?: Date;
+    summary?: string;
+    nextMonthPlans?: string;
+    emailStatus?: string;
+    emailSentAt?: Date;
+    emailSentTo?: string;
+  },
+  actorEmail: string
+) => {
+  const existing = await db.report.findUnique({
+    where: { id: reportId },
+    include: { client: true },
+  });
+  if (!existing) throw new Error("Report not found.");
+
+  const updated = await db.report.update({
+    where: { id: reportId },
+    data: {
+      ...(data.startDate ? { startDate: data.startDate } : {}),
+      ...(data.endDate ? { endDate: data.endDate } : {}),
+      ...(data.summary !== undefined ? { summary: data.summary } : {}),
+      ...(data.nextMonthPlans !== undefined ? { nextMonthPlans: data.nextMonthPlans } : {}),
+      ...(data.emailStatus ? { emailStatus: data.emailStatus } : {}),
+      ...(data.emailSentAt ? { emailSentAt: data.emailSentAt } : {}),
+      ...(data.emailSentTo ? { emailSentTo: data.emailSentTo } : {}),
+    },
+  });
+
+  return updated;
+};
+
